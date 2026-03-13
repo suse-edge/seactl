@@ -2,9 +2,10 @@ package airgap
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/alknopfler/seactl/pkg/config"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func fakeReleaseManifest() (*config.ReleaseManifest, *config.ImagesManifest, error) {
@@ -47,7 +48,7 @@ func TestGenerateAirGapEnvironment_DryRun(t *testing.T) {
 		return fakeReleaseManifest()
 	}
 
-	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "url", "auth", "ca", "/tmp", true)
+	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "url", "auth", "rancher-auth", "ca", "/tmp", true)
 	assert.NoError(t, err)
 }
 
@@ -55,6 +56,6 @@ func TestGenerateAirGapEnvironment_ErrorFromManifest(t *testing.T) {
 	ReadAirgapManifestFunc = func(version, mode string) (*config.ReleaseManifest, *config.ImagesManifest, error) {
 		return nil, nil, errors.New("failed manifest")
 	}
-	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "auth", "auth", "ca", "/tmp", true)
+	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "auth", "auth", "rancher-auth", "ca", "/tmp", true)
 	assert.Error(t, err)
 }

@@ -18,14 +18,15 @@ var (
 	generateErr error
 
 	generateParams struct {
-		dryRun           bool
-		releaseVersion   string
-		releaseMode      string
-		registryURL      string
-		registryAuthFile string
-		registryCACert   string
-		outputDir        string
-		registryInsecure bool
+		dryRun              bool
+		releaseVersion      string
+		releaseMode         string
+		registryURL         string
+		registryAuthFile    string
+		rancherAppsAuthFile string
+		registryCACert      string
+		outputDir           string
+		registryInsecure    bool
 	}
 )
 
@@ -36,18 +37,19 @@ func fakeCheckHelm() error {
 }
 
 func fakeGenerate(
-	dryRun bool, rv, rm, url, auth, cacert, out string, insecure bool,
+	dryRun bool, rv, rm, url, auth, rancherAuth, cacert, out string, insecure bool,
 ) error {
 	generateParams = struct {
-		dryRun           bool
-		releaseVersion   string
-		releaseMode      string
-		registryURL      string
-		registryAuthFile string
-		registryCACert   string
-		outputDir        string
-		registryInsecure bool
-	}{dryRun, rv, rm, url, auth, cacert, out, insecure}
+		dryRun              bool
+		releaseVersion      string
+		releaseMode         string
+		registryURL         string
+		registryAuthFile    string
+		rancherAppsAuthFile string
+		registryCACert      string
+		outputDir           string
+		registryInsecure    bool
+	}{dryRun, rv, rm, url, auth, rancherAuth, cacert, out, insecure}
 	return generateErr
 }
 
@@ -105,6 +107,7 @@ func TestInvalidReleaseMode_Error(t *testing.T) {
 		"--release-mode", "invalid",
 		"--release-version", "1.2.3",
 		"--registry-url", "url",
+		"--rancher-apps-auth-file", "rancher-auth",
 		"--output", "out",
 	})
 
@@ -118,6 +121,7 @@ func TestInvalidVersionFormat_Error(t *testing.T) {
 		"--release-mode", "factory",
 		"--release-version", "badver",
 		"--registry-url", "url",
+		"--rancher-apps-auth-file", "rancher-auth",
 		"--output", "out",
 	})
 
@@ -129,14 +133,15 @@ func TestInvalidVersionFormat_Error(t *testing.T) {
 func TestGenerate_Success(t *testing.T) {
 	helmCalled = false
 	generateParams = struct {
-		dryRun           bool
-		releaseVersion   string
-		releaseMode      string
-		registryURL      string
-		registryAuthFile string
-		registryCACert   string
-		outputDir        string
-		registryInsecure bool
+		dryRun              bool
+		releaseVersion      string
+		releaseMode         string
+		registryURL         string
+		registryAuthFile    string
+		rancherAppsAuthFile string
+		registryCACert      string
+		outputDir           string
+		registryInsecure    bool
 	}{}
 
 	stdout, stderr, err := runCommand([]string{
@@ -144,6 +149,7 @@ func TestGenerate_Success(t *testing.T) {
 		"--release-version", "1.2.3",
 		"--registry-url", "reg",
 		"--registry-authfile", "auth",
+		"--rancher-apps-auth-file", "rancher-auth",
 		"--registry-cacert", "cacert",
 		"--output", "out",
 		"--dry-run",
@@ -159,6 +165,7 @@ func TestGenerate_Success(t *testing.T) {
 	assert.Equal(t, "1.2.3", generateParams.releaseVersion)
 	assert.Equal(t, "reg", generateParams.registryURL)
 	assert.Equal(t, "auth", generateParams.registryAuthFile)
+	assert.Equal(t, "rancher-auth", generateParams.rancherAppsAuthFile)
 	assert.Equal(t, "cacert", generateParams.registryCACert)
 	assert.Equal(t, "out", generateParams.outputDir)
 	assert.True(t, generateParams.dryRun)

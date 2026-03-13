@@ -6,14 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 type Registry struct {
@@ -60,6 +61,7 @@ func (r *Registry) RegistryHelmLogin() error {
 		log.Printf("failed to login to the registry: %s", err)
 		return err
 	}
+	log.Printf("successfully logged in to the helm registry %s", r.RegistryURL)
 	return nil
 }
 

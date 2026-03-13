@@ -2,19 +2,21 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/alknopfler/seactl/pkg/airgap"
 	"github.com/spf13/cobra"
 )
 
 var (
-	releaseVersion   string
-	releaseMode      string
-	registryAuthFile string
-	registryURL      string
-	registryCACert   string
-	registryInsecure bool
-	outputDirTarball string
-	dryRun           bool
+	releaseVersion      string
+	releaseMode         string
+	registryAuthFile    string
+	rancherAppsAuthFile string
+	registryURL         string
+	registryCACert      string
+	registryInsecure    bool
+	outputDirTarball    string
+	dryRun              bool
 )
 
 func NewAirGapCommand() *cobra.Command {
@@ -40,7 +42,7 @@ func NewAirGapCommand() *cobra.Command {
 			// Call airgap generation
 			return airgap.GenerateAirGapEnvironment(
 				dryRun, releaseVersion, releaseMode,
-				registryURL, registryAuthFile, registryCACert,
+				registryURL, registryAuthFile, rancherAppsAuthFile, registryCACert,
 				outputDirTarball, registryInsecure,
 			)
 		},
@@ -51,7 +53,8 @@ func NewAirGapCommand() *cobra.Command {
 	flags.StringVarP(&releaseMode, "release-mode", "m", "factory", "Release mode: factory or production")
 	flags.StringVarP(&registryURL, "registry-url", "r", "", "Registry URL")
 	flags.StringVarP(&registryCACert, "registry-cacert", "c", "", "Registry CA Certificate")
-	flags.StringVarP(&registryAuthFile, "registry-authfile", "a", "", "Registry Auth file")
+	flags.StringVarP(&registryAuthFile, "registry-authfile", "a", "", "Registry Auth file (base64 user:pass)")
+	flags.StringVar(&rancherAppsAuthFile, "rancher-apps-authfile", "", "Rancher Apps registry auth file (base64 user:pass)")
 	flags.BoolVarP(&registryInsecure, "insecure", "k", false, "Skip TLS verification")
 	flags.StringVarP(&outputDirTarball, "output", "o", "", "Output directory for tarball files")
 	flags.BoolVarP(&dryRun, "dry-run", "d", false, "Dry run mode")
@@ -60,6 +63,7 @@ func NewAirGapCommand() *cobra.Command {
 	c.MarkFlagRequired("release-version")
 	c.MarkFlagRequired("output")
 	c.MarkFlagRequired("registry-url")
+	c.MarkFlagRequired("rancher-apps-authfile")
 
 	return c
 }

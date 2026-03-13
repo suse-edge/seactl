@@ -3,15 +3,16 @@ package airgap
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os/exec"
+	"sync"
+
 	"github.com/TwiN/go-color"
 	"github.com/alknopfler/seactl/pkg/config"
 	"github.com/alknopfler/seactl/pkg/helm"
 	"github.com/alknopfler/seactl/pkg/images"
 	"github.com/alknopfler/seactl/pkg/registry"
 	"github.com/alknopfler/seactl/pkg/rke2"
-	"log"
-	"os/exec"
-	"sync"
 )
 
 type Manager interface {
@@ -35,7 +36,7 @@ var ReadAirgapManifestFunc = config.ReadAirgapManifest
 var GenerateAirGapEnvironment = func(
 	dryrun bool,
 	releaseVersion, releaseMode,
-	registryURL, registryAuthFile, registryCACert,
+	registryURL, registryAuthFile, rancherAppsAuthFile, registryCACert,
 	outputDirTarball string,
 	insecure bool,
 ) error {
@@ -50,6 +51,19 @@ var GenerateAirGapEnvironment = func(
 	}
 
 	reg := registry.New(registryAuthFile, registryURL, registryCACert, insecure)
+	rancherAppsReg := registry.New(rancherAppsAuthFile, "dp.apps.rancher.io", "", false)
+
+	if !dryrun {
+		if err := reg.RegistryLogin(); err != nil {
+			return err
+		}
+		if err := rancherAppsReg.RegistryHelmLogin(); err != nil {
+			return err
+		}
+		if err := reg.RegistryHelmLogin(); err != nil {
+			return err
+		}
+	}
 
 	go func() {
 		err := generateRKE2Artifacts(dryrun, releaseManifest, outputDirTarball)
@@ -60,7 +74,7 @@ var GenerateAirGapEnvironment = func(
 	}()
 
 	go func() {
-		err = generateHelmArtifacts(dryrun, releaseManifest, reg)
+		err = generateHelmArtifacts(dryrun, releaseManifest, reg, rancherAppsReg)
 		if err != nil {
 			fatalErrors <- err
 		}
@@ -106,13 +120,10 @@ func generateRKE2Artifacts(dryrun bool, airgapManifest *config.ReleaseManifest, 
 	return nil
 }
 
-func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest, reg *registry.Registry) error {
+func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest, reg *registry.Registry, rancherAppsReg *registry.Registry) error {
 	for _, value := range releaseManifest.Spec.Components.Workloads.Helm {
 		h := helm.New(value.ReleaseName, value.Version, value.Chart, value.Repository, reg)
 		if !dryrun {
-			if err := reg.RegistryHelmLogin(); err != nil {
-				return err
-			}
 			if err := h.Download(); err != nil {
 				return err
 			}
@@ -139,9 +150,6 @@ func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest,
 	for _, value := range imagesManifest.Images {
 		img := images.New(value.Name, reg)
 		if !dryrun {
-			if err := reg.RegistryLogin(); err != nil {
-				return err
-			}
 			if err := img.Download(); err != nil {
 				return err
 			}

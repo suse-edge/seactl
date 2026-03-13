@@ -63,7 +63,7 @@ func (h *Helm) Download() error {
 	cmd.Stderr = nil
 
 	if err := cmd.Run(); err != nil {
-		log.Printf("failed to download chart: %v", err)
+		log.Printf("failed to download chart %s: %v", h.Chart, err)
 		return err
 	}
 

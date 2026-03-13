@@ -43,6 +43,8 @@ echo -n "mypassword" | base64
 
 2. If your private registry is using a self-signed certificate, create a CA certificate file and provide the path to the tool.
 
+3. Rancher Apps charts require authentication. Create a Rancher Apps auth file with the same base64 `user:pass` format described above. See [SUSE Storage installation docs](https://documentation.suse.com/suse-edge/3.5/html/edge/components-suse-storage.html#id-installing-suse-storage).
+
 The following command can be used to generate the airgap artifacts
 
 ```bash
@@ -55,6 +57,7 @@ Flags:
 -k, --insecure                   Skip TLS verification in registry
 -o, --output string              Output directory to store the tarball files
 -a, --registry-authfile string   Registry Auth file with username:password base64 encoded
+    --rancher-apps-authfile string     Rancher Apps registry auth file with username:password base64 encoded
 -c, --registry-cacert string     Registry CA Certificate file
 -r, --registry-url string        Registry URL
 -d, --dryrun                     Dry run mode, only print the actions without executing them
@@ -71,11 +74,11 @@ seactl --version
 ## Example of usage
 
 ```bash
-seactl generate -v 3.4.0 -m factory -o /tmp/airgap -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
+seactl generate -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
 ```
 
 ```bash
-seactl generate -v 3.4.0 -m production -o /tmp/airgap -a registry-auth.txt -r myregistry:5000 --insecure
+seactl generate -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt-a registry-auth.txt -r myregistry:5000 --insecure
 ```
 
 ```bash 
