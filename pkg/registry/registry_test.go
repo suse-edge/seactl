@@ -90,7 +90,7 @@ func TestRegistryHelmLogin_WithCredentials(t *testing.T) {
 		assert.Contains(t, args, "login")
 		assert.Contains(t, args, "--username")
 		assert.Contains(t, args, "--password")
-		return exec.Command("echo") // siempre "éxito"
+		return exec.Command("echo") // always "success"
 	}
 
 	err := r.RegistryHelmLogin()

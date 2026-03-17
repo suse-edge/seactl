@@ -107,7 +107,7 @@ func TestInvalidReleaseMode_Error(t *testing.T) {
 		"--release-mode", "invalid",
 		"--release-version", "1.2.3",
 		"--registry-url", "url",
-		"--rancher-apps-auth-file", "rancher-auth",
+		"--rancher-apps-authfile", "rancher-auth",
 		"--output", "out",
 	})
 
@@ -121,7 +121,7 @@ func TestInvalidVersionFormat_Error(t *testing.T) {
 		"--release-mode", "factory",
 		"--release-version", "badver",
 		"--registry-url", "url",
-		"--rancher-apps-auth-file", "rancher-auth",
+		"--rancher-apps-authfile", "rancher-auth",
 		"--output", "out",
 	})
 
@@ -149,7 +149,7 @@ func TestGenerate_Success(t *testing.T) {
 		"--release-version", "1.2.3",
 		"--registry-url", "reg",
 		"--registry-authfile", "auth",
-		"--rancher-apps-auth-file", "rancher-auth",
+		"--rancher-apps-authfile", "rancher-auth",
 		"--registry-cacert", "cacert",
 		"--output", "out",
 		"--dry-run",

@@ -75,7 +75,7 @@ func TestDownload_Fail(t *testing.T) {
 
 func TestVerify_Success(t *testing.T) {
 	h := New("mychart", "1.0.0", "chart", "", nil)
-	file := filepath.Join(tempDir, "mychart-1.0.0.tgz")
+	file := filepath.Join(tempDir, "chart-1.0.0.tgz")
 	err := os.WriteFile(file, []byte("dummy"), 0600)
 	assert.NoError(t, err)
 	defer os.Remove(file)
@@ -94,7 +94,7 @@ func TestUpload_Success_Insecure(t *testing.T) {
 	reg := registry.New("auth.json", "registry.io", "", false)
 	h := New("mychart", "1.0.0", "chart", "", reg)
 	h.Insecure = true
-	file := filepath.Join(tempDir, "mychart-1.0.0.tgz")
+	file := filepath.Join(tempDir, "chart-1.0.0.tgz")
 	err := os.WriteFile(file, []byte("dummy"), 0600)
 	assert.NoError(t, err)
 	defer os.Remove(file)
@@ -113,7 +113,7 @@ func TestUpload_Success_WithCA(t *testing.T) {
 
 	reg := registry.New("auth.json", "registry.io", caFile, false)
 	h := New("mychart", "1.0.0", "chart", "", reg)
-	file := filepath.Join(tempDir, "mychart-1.0.0.tgz")
+	file := filepath.Join(tempDir, "chart-1.0.0.tgz")
 	err = os.WriteFile(file, []byte("dummy"), 0600)
 	assert.NoError(t, err)
 	defer os.Remove(file)
@@ -128,7 +128,7 @@ func TestUpload_Success_WithCA(t *testing.T) {
 func TestUpload_Fail(t *testing.T) {
 	reg := registry.New("auth.json", "registry.io", "", false)
 	h := New("mychart", "1.0.0", "chart", "", reg)
-	file := filepath.Join(tempDir, "mychart-1.0.0.tgz")
+	file := filepath.Join(tempDir, "chart-1.0.0.tgz")
 	err := os.WriteFile(file, []byte("dummy"), 0600)
 	assert.NoError(t, err)
 	defer os.Remove(file)

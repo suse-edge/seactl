@@ -27,7 +27,7 @@ func writeTempFile(t *testing.T, content string) string {
 	return tmp
 }
 
-// guardar originales para restaurar
+// save originals to restore later
 var (
 	origRemoteImage = remoteImage
 	origRemoteWrite = remoteWrite
@@ -39,14 +39,14 @@ func setupTest(t *testing.T) {
 }
 
 // ------------------------
-// Tests de New
+// New tests
 // ------------------------
 
 func TestNew(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 
 	assert.Equal(t, "nginx:latest", img.Name)
 	assert.Equal(t, reg, img.reg)
@@ -54,7 +54,7 @@ func TestNew(t *testing.T) {
 }
 
 // ------------------------
-// fakeImage implementa v1.Image
+// fakeImage implements v1.Image
 // ------------------------
 
 type fakeImage struct{}
@@ -74,14 +74,14 @@ func (f *fakeImage) Size() (int64, error)                    { return 0, nil }
 func (f *fakeImage) ConfigLayer() (v1.Layer, error)          { return nil, nil }
 
 // ------------------------
-// Tests de Download
+// Download tests
 // ------------------------
 
 func TestDownload_Success(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 
 	remoteImage = func(ref name.Reference, opts ...remote.Option) (v1.Image, error) {
 		return &fakeImage{}, nil
@@ -96,7 +96,7 @@ func TestDownload_InvalidRef(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("!invalid-ref", reg)
+	img := New("!invalid-ref", reg, nil)
 
 	err := img.Download()
 	assert.Error(t, err)
@@ -107,7 +107,7 @@ func TestDownload_FailRemote(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 
 	remoteImage = func(ref name.Reference, opts ...remote.Option) (v1.Image, error) {
 		return nil, errors.New("fake error")
@@ -119,7 +119,7 @@ func TestDownload_FailRemote(t *testing.T) {
 }
 
 // ------------------------
-// Tests de Upload
+// Upload tests
 // ------------------------
 
 func TestUpload_Success(t *testing.T) {
@@ -127,7 +127,7 @@ func TestUpload_Success(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=") // user:password
 	reg := registry.New(authFile, "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 	img.ImageRef = &fakeImage{}
 
 	remoteWrite = func(ref name.Reference, img v1.Image, opts ...remote.Option) error {
@@ -142,7 +142,7 @@ func TestUpload_InvalidRef(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("!bad-ref", reg)
+	img := New("!bad-ref", reg, nil)
 	img.ImageRef = &fakeImage{}
 
 	err := img.Upload()
@@ -154,7 +154,7 @@ func TestUpload_FailRemoteWrite(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=")
 	reg := registry.New(authFile, "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 	img.ImageRef = &fakeImage{}
 
 	remoteWrite = func(ref name.Reference, img v1.Image, opts ...remote.Option) error {
@@ -166,7 +166,7 @@ func TestUpload_FailRemoteWrite(t *testing.T) {
 }
 
 // ------------------------
-// Tests de getRemoteOpts
+// getRemoteOpts tests
 // ------------------------
 
 func TestGetRemoteOpts_Success(t *testing.T) {
@@ -174,7 +174,7 @@ func TestGetRemoteOpts_Success(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=") // user:password
 	reg := registry.New(authFile, "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 
 	opts, err := img.getRemoteOpts()
 	assert.NoError(t, err)
@@ -186,7 +186,7 @@ func TestGetRemoteOpts_InvalidCA(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=")
 	reg := registry.New(authFile, "registry.io", "missing-ca.crt", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 
 	opts, err := img.getRemoteOpts()
 	assert.Error(t, err)
@@ -197,7 +197,7 @@ func TestGetRemoteOpts_InvalidAuthFile(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("not-found.json", "registry.io", "", false)
-	img := New("nginx:latest", reg)
+	img := New("nginx:latest", reg, nil)
 
 	opts, err := img.getRemoteOpts()
 	assert.Error(t, err)
