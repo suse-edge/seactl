@@ -186,3 +186,38 @@ func Test_ensureTrailingSlash(t *testing.T) {
 		})
 	}
 }
+func TestRKE2_Upload(t *testing.T) {
+	r := New("v1.2.3", "outdir")
+	err := r.Upload()
+	if err != nil { t.Errorf("unexpected error: %v", err) }
+}
+
+func TestRKE2_Download_FailMkdir(t *testing.T) {
+	r := New("v1.2.3", "/root/readonly/cannot-create")
+	r.Download()
+}
+
+func TestRKE2_Download_FailInstallScript(t *testing.T) {
+	tempDir := createTempDir(t)
+	defer os.RemoveAll(tempDir)
+	oldRKE2URL := RKE2URL
+	RKE2URL = "http://invalid-url"
+	defer func() { RKE2URL = oldRKE2URL }()
+	r := New("v1.2.3", tempDir)
+	r.Download()
+}
+
+func TestRKE2_Download_FailImageTarball(t *testing.T) {
+	tempDir := createTempDir(t)
+	defer os.RemoveAll(tempDir)
+	oldRKE2URL := RKE2URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	RKE2URL = server.URL
+	defer func() { RKE2URL = oldRKE2URL }()
+	r := New("v1.2.3", tempDir)
+	r.ReleaseURL = "http://invalid-url/"
+	r.Download()
+}

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const (
+var (
 	RKE2ReleaseURL = "https://github.com/rancher/rke2/releases/download/"
 	RKE2URL        = "https://get.rke2.io"
 )

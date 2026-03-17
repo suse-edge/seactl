@@ -1,0 +1,1275 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/alknopfler/seactl/cmd/airgap.go (96.0%)</option>
+				
+				<option value="file1">github.com/alknopfler/seactl/main.go (66.7%)</option>
+				
+				<option value="file2">github.com/alknopfler/seactl/pkg/airgap/manager.go (61.2%)</option>
+				
+				<option value="file3">github.com/alknopfler/seactl/pkg/config/config.go (67.4%)</option>
+				
+				<option value="file4">github.com/alknopfler/seactl/pkg/helm/helm.go (83.1%)</option>
+				
+				<option value="file5">github.com/alknopfler/seactl/pkg/images/images.go (78.7%)</option>
+				
+				<option value="file6">github.com/alknopfler/seactl/pkg/logger/logger.go (100.0%)</option>
+				
+				<option value="file7">github.com/alknopfler/seactl/pkg/registry/registry.go (81.0%)</option>
+				
+				<option value="file8">github.com/alknopfler/seactl/pkg/rke2/rke2.go (80.5%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package cmd
+
+import (
+        "fmt"
+
+        "github.com/alknopfler/seactl/pkg/airgap"
+        "github.com/alknopfler/seactl/pkg/logger"
+        "github.com/spf13/cobra"
+)
+
+var (
+        releaseVersion      string
+        releaseMode         string
+        registryAuthFile    string
+        rancherAppsAuthFile string
+        registryURL         string
+        registryCACert      string
+        registryInsecure    bool
+        outputDirTarball    string
+        dryRun              bool
+        debug               bool
+)
+
+func NewAirGapCommand() *cobra.Command <span class="cov8" title="1">{
+        c := &amp;cobra.Command{
+                Use:   "generate",
+                Short: "Command to generate the air-gap artifacts from the airgap manifest",
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov8" title="1">{
+                        // Set global debug flag
+                        logger.Debug = debug
+
+                        // Check helm
+                        if err := airgap.CheckHelmCommand(); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+
+                        // Validate release mode
+                        <span class="cov8" title="1">if releaseMode != "factory" &amp;&amp; releaseMode != "production" </span><span class="cov8" title="1">{
+                                return fmt.Errorf("invalid value for --release-mode: %s, allowed: 'factory' or 'production'", releaseMode)
+                        }</span>
+
+                        // Validate release version format X.Y.Z
+                        <span class="cov8" title="1">if releaseVersion == "" || len(releaseVersion) &lt; 5 || releaseVersion[1] != '.' || releaseVersion[3] != '.' </span><span class="cov8" title="1">{
+                                return fmt.Errorf("invalid release version format: %s, expected format X.Y.Z", releaseVersion)
+                        }</span>
+
+                        // Call airgap generation
+                        <span class="cov8" title="1">return airgap.GenerateAirGapEnvironment(
+                                dryRun, releaseVersion, releaseMode,
+                                registryURL, registryAuthFile, rancherAppsAuthFile, registryCACert,
+                                outputDirTarball, registryInsecure,
+                        )</span>
+                },
+        }
+
+        <span class="cov8" title="1">flags := c.Flags()
+        flags.StringVarP(&amp;releaseVersion, "release-version", "v", "", "SUSE Edge release version (X.Y.Z)")
+        flags.StringVarP(&amp;releaseMode, "release-mode", "m", "factory", "Release mode: factory or production")
+        flags.StringVarP(&amp;registryURL, "registry-url", "r", "", "Registry URL")
+        flags.StringVarP(&amp;registryCACert, "registry-cacert", "c", "", "Registry CA Certificate")
+        flags.StringVarP(&amp;registryAuthFile, "registry-authfile", "a", "", "Registry Auth file (base64 user:pass)")
+        flags.StringVar(&amp;rancherAppsAuthFile, "rancher-apps-authfile", "", "Rancher Apps registry auth file (base64 user:pass)")
+        flags.BoolVarP(&amp;registryInsecure, "insecure", "k", false, "Skip TLS verification")
+        flags.StringVarP(&amp;outputDirTarball, "output", "o", "", "Output directory for tarball files")
+        flags.BoolVarP(&amp;dryRun, "dry-run", "d", false, "Dry run mode")
+        flags.BoolVar(&amp;debug, "debug", false, "Enable debug logging")
+
+        // Required flags
+        c.MarkFlagRequired("release-version")
+        c.MarkFlagRequired("output")
+        c.MarkFlagRequired("registry-url")
+        c.MarkFlagRequired("rancher-apps-authfile")
+
+        return c</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "log"
+        "os"
+
+        "github.com/TwiN/go-color"
+        "github.com/alknopfler/seactl/cmd"
+        "github.com/spf13/cobra"
+)
+
+var version = "dev"
+var osExit = os.Exit
+
+func init() {<span class="cov8" title="1">
+
+}</span>
+
+func main() <span class="cov0" title="0">{
+        command := newCommand()
+        if err := command.Execute(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf(color.InRed("[ERROR] %s"), err.Error())
+        }</span>
+}
+
+func newCommand() *cobra.Command <span class="cov8" title="1">{
+        c := &amp;cobra.Command{
+                Use:   "seactl",
+                Short: "SUSE Edge Air-gap tool enables to create an air-gap scenario using the suse-edge airgap manifest",
+                Long: "SUSE Edge Air-gap tool enables to create an air-gap scenario using the suse-edge airgap manifest. The output could be a tarball, but also you could upload to a private registry.\n" +
+                        "Features: \n" +
+                        "- Read the SUSE Edge airgap manifest (pulling from release container)\n" +
+                        "- Save artifacts to a tarball\n" +
+                        "- Login to a private registry\n" +
+                        "- Upload and preload the private registry with the artifacts\n" +
+                        "\n",
+                Run: func(cmd *cobra.Command, args []string) </span><span class="cov8" title="1">{
+                        cmd.Help()
+                        osExit(0)
+                }</span>,
+                Version: version,
+        }
+
+        <span class="cov8" title="1">c.SetVersionTemplate("seactl version {{.Version}}\n")
+
+        c.AddCommand(cmd.NewAirGapCommand())
+
+        return c</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package airgap
+
+import (
+        "errors"
+        "fmt"
+        "github.com/alknopfler/seactl/pkg/logger"
+        "os/exec"
+        "sync"
+
+        "github.com/TwiN/go-color"
+        "github.com/alknopfler/seactl/pkg/config"
+        "github.com/alknopfler/seactl/pkg/helm"
+        "github.com/alknopfler/seactl/pkg/images"
+        "github.com/alknopfler/seactl/pkg/registry"
+        "github.com/alknopfler/seactl/pkg/rke2"
+)
+
+type Manager interface {
+        Download() error
+        Verify() error
+        Upload() error
+}
+
+// CheckHelmCommand is assignable for testing
+var CheckHelmCommand = func() error <span class="cov0" title="0">{
+        if _, err := exec.LookPath("helm"); err != nil </span><span class="cov0" title="0">{
+                return errors.New("Helm command not found in the system. You need to install it to continue")
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// ReadAirgapManifestFunc is assignable for testing
+var ReadAirgapManifestFunc = config.ReadAirgapManifest
+
+// GenerateAirGapEnvironment is assignable for testing
+var GenerateAirGapEnvironment = func(
+        dryrun bool,
+        releaseVersion, releaseMode,
+        registryURL, registryAuthFile, rancherAppsAuthFile, registryCACert,
+        outputDirTarball string,
+        insecure bool,
+) error <span class="cov8" title="1">{
+        fatalErrors := make(chan error)
+        wgDone := make(chan bool)
+        var wg sync.WaitGroup
+        wg.Add(3)
+
+        releaseManifest, imagesManifest, err := ReadAirgapManifestFunc(releaseVersion, releaseMode)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">reg := registry.New(registryAuthFile, registryURL, registryCACert, insecure)
+        rancherAppsReg := registry.New(rancherAppsAuthFile, "dp.apps.rancher.io", "", false)
+
+        if !dryrun </span><span class="cov0" title="0">{
+                if err := reg.RegistryLogin(); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">if err := rancherAppsReg.RegistryHelmLogin(); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">if err := reg.RegistryHelmLogin(); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                
+                // Attempt to create the 'edge' project on Harbor specifically, ignores errors if not Harbor
+                <span class="cov0" title="0">reg.CreateHarborProject("mirror")</span>
+        }
+
+        <span class="cov8" title="1">go func() </span><span class="cov8" title="1">{
+                err := generateRKE2Artifacts(dryrun, releaseManifest, outputDirTarball)
+                if err != nil </span><span class="cov0" title="0">{
+                        fatalErrors &lt;- err
+                }</span>
+                <span class="cov8" title="1">wg.Done()</span>
+        }()
+
+        <span class="cov8" title="1">go func() </span><span class="cov8" title="1">{
+                err = generateHelmArtifacts(dryrun, releaseManifest, reg, rancherAppsReg)
+                if err != nil </span><span class="cov0" title="0">{
+                        fatalErrors &lt;- err
+                }</span>
+                <span class="cov8" title="1">wg.Done()</span>
+        }()
+
+        <span class="cov8" title="1">go func() </span><span class="cov8" title="1">{
+                err = generateImagesArtifacts(dryrun, imagesManifest, reg, rancherAppsReg)
+                if err != nil </span><span class="cov0" title="0">{
+                        fatalErrors &lt;- err
+                }</span>
+                <span class="cov8" title="1">wg.Done()</span>
+        }()
+
+        <span class="cov8" title="1">go func() </span><span class="cov8" title="1">{
+                wg.Wait()
+                close(wgDone)
+        }</span>()
+
+        <span class="cov8" title="1">select </span>{
+        case &lt;-wgDone:<span class="cov8" title="1">
+                return nil</span>
+        case err = &lt;-fatalErrors:<span class="cov0" title="0">
+                close(fatalErrors)
+                logger.Fatal("Error found running the program: ", err)
+                return err</span>
+        }
+}
+
+func generateRKE2Artifacts(dryrun bool, airgapManifest *config.ReleaseManifest, outputDirTarball string) error <span class="cov8" title="1">{
+        r := rke2.New(airgapManifest.Spec.Components.Kubernetes.Rke2.Version, outputDirTarball)
+        if !dryrun </span><span class="cov8" title="1">{
+                if err := r.Download(); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">if err := r.Verify(); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        } else<span class="cov8" title="1"> {
+                logger.Println("Dry run mode enabled, skipping download and verification of RKE2 images.")
+        }</span>
+        <span class="cov8" title="1">logger.Println(color.InGreen("RKE2 Images downloaded and verified successfully! you can find them in: " + outputDirTarball))
+        return nil</span>
+}
+
+func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest, reg *registry.Registry, rancherAppsReg *registry.Registry) error <span class="cov8" title="1">{
+        for _, value := range releaseManifest.Spec.Components.Workloads.Helm </span><span class="cov8" title="1">{
+                h := helm.New(value.ReleaseName, value.Version, value.Chart, value.Repository, reg)
+                if !dryrun </span><span class="cov8" title="1">{
+                        if err := h.Download(); err != nil </span><span class="cov8" title="1">{
+                                return err
+                        }</span>
+                        <span class="cov0" title="0">if err := h.Verify(); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                        <span class="cov0" title="0">if reg.RegistryInsecure </span><span class="cov0" title="0">{
+                                h.Insecure = true
+                        }</span>
+                        <span class="cov0" title="0">if err := h.Upload(); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                        <span class="cov0" title="0">logger.Printf(color.InGreen("Helm chart %s prepared and uploaded successfully!\n"), value.ReleaseName)</span>
+                } else<span class="cov8" title="1"> {
+                        logger.Println("DryRun mode - Helm Chart Info:")
+                        logger.Printf("\nName: %s\nVersion: %s\nURL: %s\nChart: %s\n", h.Name, h.Version, h.URL, h.Chart)
+                }</span>
+        }
+        <span class="cov8" title="1">logger.Println(color.InGreen("Helm Chart artifacts pre-loaded in registry successfully!"))
+        return nil</span>
+}
+
+func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest, reg *registry.Registry, rancherAppsReg *registry.Registry) error <span class="cov8" title="1">{
+        for _, value := range imagesManifest.Images </span><span class="cov8" title="1">{
+                img := images.New(value.Name, reg, rancherAppsReg)
+                if !dryrun </span><span class="cov8" title="1">{
+                        if err := img.Download(); err != nil </span><span class="cov8" title="1">{
+                                return err
+                        }</span>
+                        <span class="cov0" title="0">if err := img.Verify(); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                        <span class="cov0" title="0">if reg.RegistryInsecure </span><span class="cov0" title="0">{
+                                img.Insecure = true
+                        }</span>
+                        <span class="cov0" title="0">fmt.Println("Image Info:")
+                        fmt.Printf("Name: %s\n", img.Name)
+                        if err := img.Upload(); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                } else<span class="cov8" title="1"> {
+                        logger.Println("DryRun mode - Image Info:")
+                        logger.Printf("\nName: %s\n", img.Name)
+                }</span>
+        }
+        <span class="cov8" title="1">logger.Println(color.InGreen("Images artifacts pre-loaded in registry successfully!"))
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package config
+
+import (
+        "archive/tar"
+        "bytes"
+        "errors"
+        "fmt"
+        "gopkg.in/yaml.v2"
+        "github.com/alknopfler/seactl/pkg/logger"
+        "os/exec"
+        "strings"
+)
+
+const (
+        // releaseMode factory url
+        factoryReleaseURL    = "registry.opensuse.org/isv/suse/edge/factory/test_manifest_images/release-manifest:%s"
+        productionReleaseURL = "registry.suse.com/edge/%s/release-manifest:%s"
+        releaseManifestPath  = "/release_manifest.yaml"
+        releaseImagesPath    = "/release_images.yaml"
+)
+
+var execCommand = exec.Command
+
+// Func ReadAirgapManifest from a release-version and pull it from release container, and return a ReleaseManifest struct or an error if something goes wrong
+func ReadAirgapManifest(version, mode string) (*ReleaseManifest, *ImagesManifest, error) <span class="cov8" title="1">{
+
+        // Determine the input based on the mode
+        var input string
+        if mode == "factory" </span><span class="cov8" title="1">{
+                // Use the factory release URL to replace the param version content in %s inside factoryReleaseURL
+                input = fmt.Sprintf(factoryReleaseURL, version)
+        }</span> else<span class="cov8" title="1"> if mode == "production" </span><span class="cov8" title="1">{
+                // Use the production release URL to replace the param version content in %s inside productionReleaseURL
+                input = fmt.Sprintf(productionReleaseURL, strings.Join(strings.Split(version, ".")[:2], "."), version)
+        }</span> else<span class="cov8" title="1"> {
+                return nil, nil, errors.New("invalid release mode, must be either 'factory' or 'production'")
+        }</span>
+
+        // Read files content
+        <span class="cov8" title="1">releaseManifestData, err := extractFileFromContainer(input, releaseManifestPath)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Printf("failed to read file: %v", err)
+                return nil, nil, err
+        }</span>
+
+        <span class="cov8" title="1">releaseImagesData, err := extractFileFromContainer(input, releaseImagesPath)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Printf("failed to read file: %v", err)
+                return nil, nil, err
+        }</span>
+
+        // Unmarshal YAML into struct
+        <span class="cov8" title="1">var releaseManifest ReleaseManifest
+        if err := yaml.Unmarshal(releaseManifestData, &amp;releaseManifest); err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to unmarshal YAML: %v", err)
+                return nil, nil, err
+        }</span>
+        <span class="cov8" title="1">var releaseImages ImagesManifest
+        if err := yaml.Unmarshal(releaseImagesData, &amp;releaseImages); err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to unmarshal YAML: %v", err)
+                return nil, nil, err
+        }</span>
+
+        <span class="cov8" title="1">return &amp;releaseManifest, &amp;releaseImages, nil</span>
+}
+
+var extractFileFromContainer = func(imageURL, filePath string) ([]byte, error) <span class="cov8" title="1">{
+        // Pull image
+        if err := execCommand("podman", "pull", imageURL).Run(); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to pull image: %s %w", imageURL, err)
+        }</span>
+
+        // Create container
+        <span class="cov8" title="1">containerIDRaw, err := execCommand("podman", "create", imageURL).Output()
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to create container: %w", err)
+        }</span>
+        <span class="cov8" title="1">containerID := strings.TrimSpace(string(containerIDRaw))
+
+        // Extract file using podman cp (into tar stream)
+        var buf bytes.Buffer
+        cmd := execCommand("podman", "cp", fmt.Sprintf("%s:%s", containerID, filePath), "-")
+        cmd.Stdout = &amp;buf
+        if err := cmd.Run(); err != nil </span><span class="cov8" title="1">{
+                execCommand("podman", "rm", containerID).Run()
+                return nil, fmt.Errorf("failed to extract file: %s %w", filePath, err)
+        }</span>
+
+        // Cleanup container
+        <span class="cov0" title="0">_ = execCommand("podman", "rm", containerID).Run()
+
+        // Read TAR stream and extract file content
+        tarReader := tar.NewReader(&amp;buf)
+        for </span><span class="cov0" title="0">{
+                header, err := tarReader.Next()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to read tar header: %w", err)
+                }</span>
+                <span class="cov0" title="0">if header.Typeflag == tar.TypeReg </span><span class="cov0" title="0">{
+                        var fileContent bytes.Buffer
+                        if _, err := fileContent.ReadFrom(tarReader); err != nil </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("failed to read file from tar: %w", err)
+                        }</span>
+                        <span class="cov0" title="0">return fileContent.Bytes(), nil</span>
+                }
+        }
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package helm
+
+import (
+        "fmt"
+        "os"
+        "os/exec"
+        "path/filepath"
+        "strings"
+
+        "github.com/alknopfler/seactl/pkg/logger"
+        "github.com/alknopfler/seactl/pkg/registry"
+)
+
+const (
+        tempDir = "./"
+)
+
+type Helm struct {
+        Name     string // release name (e.g., "rancher")
+        Chart    string // chart name or full OCI reference
+        Version  string
+        URL      string // optional repo URL (for HTTPS charts)
+        TmpDir   string
+        Insecure bool
+        reg      *registry.Registry
+}
+
+var execCommand = exec.Command
+
+func New(name, version, chart, url string, reg *registry.Registry) *Helm <span class="cov8" title="1">{
+        return &amp;Helm{
+                Name:    name,
+                Version: version,
+                Chart:   chart,
+                URL:     url,
+                reg:     reg,
+        }
+}</span>
+
+func (h *Helm) Download() error <span class="cov8" title="1">{
+        var args []string
+
+        // Determine chart reference
+        if strings.HasPrefix(h.Chart, "oci://") </span><span class="cov8" title="1">{
+                // OCI chart: full reference is already in h.Chart
+                args = []string{"pull", h.Chart, "--version", h.Version, "-d", tempDir}
+        }</span> else<span class="cov8" title="1"> {
+                if h.URL == "" </span><span class="cov8" title="1">{
+                        return fmt.Errorf("repository URL is missing for chart %s", h.Name)
+                }</span>
+
+                // Regular Helm repo chart
+                <span class="cov8" title="1">args = []string{
+                        "pull", h.Chart,
+                        "--repo", strings.TrimSuffix(h.URL, "/"),
+                        "--version", h.Version,
+                        "-d", tempDir,
+                }</span>
+        }
+        // Execute the command
+        <span class="cov8" title="1">cmd := execCommand("helm", args...)
+        
+        if logger.Debug </span><span class="cov0" title="0">{
+                logger.Debugf("Executing command: helm %s\n", strings.Join(args, " "))
+                cmd.Stdout = os.Stdout
+                cmd.Stderr = os.Stderr
+        }</span> else<span class="cov8" title="1"> {
+                cmd.Stdout = os.Stdout
+                cmd.Stderr = nil
+        }</span>
+
+        <span class="cov8" title="1">if err := cmd.Run(); err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to download chart %s: %v", h.Chart, err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">logger.Debugf("Successfully downloaded chart %s\n", h.Chart)
+        return nil</span>
+}
+
+func (h *Helm) Verify() error <span class="cov8" title="1">{
+        logger.Debugf("Verifying downloaded chart for %s\n", h.Name)
+        _, err := h.findDownloadedChart()
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Printf("file does not exist to be verified %s", err.Error())
+                return err
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (h *Helm) Upload() error <span class="cov8" title="1">{
+        chartPath, err := h.findDownloadedChart()
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Printf("file does not exist to be uploaded %s", err.Error())
+                return err
+        }</span>
+
+        <span class="cov8" title="1">var args []string
+        args = append(args, "push", chartPath, "oci://"+h.reg.RegistryURL+"/mirror")
+
+        if h.Insecure </span><span class="cov8" title="1">{
+                args = append(args, "--insecure-skip-tls-verify")
+        }</span> else<span class="cov8" title="1"> if h.reg.RegistryCACert != "" </span><span class="cov8" title="1">{
+                args = append(args, "--ca-file", h.reg.RegistryCACert)
+        }</span>
+
+        <span class="cov8" title="1">cmd := execCommand("helm", args...)
+        if logger.Debug </span><span class="cov0" title="0">{
+                logger.Debugf("Executing upload command: helm %s\n", strings.Join(args, " "))
+                cmd.Stdout = os.Stdout
+                cmd.Stderr = os.Stderr
+        }</span>
+        
+        <span class="cov8" title="1">err = cmd.Run()
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to push to the registry: %s", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">logger.Debugf("Successfully uploaded chart %s\n", h.Name)
+        defer os.Remove(chartPath)
+        return nil</span>
+}
+
+func (h *Helm) findDownloadedChart() (string, error) <span class="cov8" title="1">{
+        parts := strings.Split(h.Chart, "/")
+        chartBase := parts[len(parts)-1]
+        
+        // Helm might save the file with or without a 'v' prefix depending on the chart's Chart.yaml version field.
+        // We'll strip any 'v' first, then try both ways.
+        cleanVersion := strings.TrimPrefix(h.Version, "v")
+        
+        pattern := fmt.Sprintf("%s-%s.tgz", chartBase, cleanVersion)
+        matches, err := filepath.Glob(filepath.Join(tempDir, pattern))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        
+        <span class="cov8" title="1">if len(matches) == 0 </span><span class="cov8" title="1">{
+                // Fallback to v-prefixed version
+                pattern = fmt.Sprintf("%s-v%s.tgz", chartBase, cleanVersion)
+                matches, err = filepath.Glob(filepath.Join(tempDir, pattern))
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", err
+                }</span>
+        }
+        
+        <span class="cov8" title="1">logger.Debugf("Looking for downloaded chart using pattern %s (chart: %s, version: %s), found matches: %v", pattern, h.Chart, h.Version, matches)
+        if len(matches) == 0 </span><span class="cov8" title="1">{
+                return "", os.ErrNotExist
+        }</span>
+        <span class="cov8" title="1">if len(matches) &gt; 1 </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("multiple chart archives found for %s (pattern %s): %v", h.Name, pattern, matches)
+        }</span>
+        <span class="cov8" title="1">return matches[0], nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package images
+
+import (
+        "crypto/tls"
+        "crypto/x509"
+        "fmt"
+        "net/http"
+        "os"
+        "strings"
+
+        "github.com/alknopfler/seactl/pkg/logger"
+        "github.com/alknopfler/seactl/pkg/registry"
+        "github.com/google/go-containerregistry/pkg/authn"
+        "github.com/google/go-containerregistry/pkg/name"
+        v1 "github.com/google/go-containerregistry/pkg/v1"
+        "github.com/google/go-containerregistry/pkg/v1/remote"
+)
+
+type Images struct {
+        Name           string
+        Insecure       bool // If true, skip TLS verification
+        reg            *registry.Registry
+        rancherAppsReg *registry.Registry
+        ImageRef       v1.Image
+}
+
+var (
+        remoteImage = remote.Image
+        remoteWrite = remote.Write
+)
+
+func New(name string, reg *registry.Registry, rancherAppsReg *registry.Registry) *Images <span class="cov8" title="1">{
+        return &amp;Images{
+                Name:           name,
+                reg:            reg,
+                rancherAppsReg: rancherAppsReg,
+        }
+}</span>
+
+func (i *Images) Download() error <span class="cov8" title="1">{
+        logger.Debugf("Starting to download image %s", i.Name)
+        ref, err := name.ParseReference(i.Name)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to parse image reference %v", err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">logger.Debugf("Parsed reference: %v", ref)
+
+        var remoteOpts []remote.Option
+        if strings.HasPrefix(i.Name, "dp.apps.rancher.io") &amp;&amp; i.rancherAppsReg != nil </span><span class="cov0" title="0">{
+                authFile, err := i.rancherAppsReg.GetUserFromAuthFile()
+                if err == nil </span><span class="cov0" title="0">{
+                        auth := &amp;authn.Basic{
+                                Username: authFile[0],
+                                Password: authFile[1],
+                        }
+                        remoteOpts = append(remoteOpts, remote.WithAuth(auth))
+                        logger.Debugf("Using rancher apps authentication for %s", i.Name)
+                }</span> else<span class="cov0" title="0"> {
+                        logger.Debugf("Failed to read rancher apps auth file: %v", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">img, err := remoteImage(ref, remoteOpts...)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Printf("pulling image %q: %v", img, err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">i.ImageRef = img
+        logger.Printf("successfully pulled image %q", i.Name)
+        return nil</span>
+}
+
+func (i *Images) Verify() error <span class="cov8" title="1">{
+        // Verify the image
+        return nil
+}</span>
+
+func (i *Images) Upload() error <span class="cov8" title="1">{
+        srcRef, err := name.ParseReference(i.Name)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("parsing reference %q: %v", i.Name, err)
+        }</span>
+
+        <span class="cov8" title="1">ref, err := i.buildTargetReference(srcRef)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("building target reference for %q: %v", i.Name, err)
+        }</span>
+
+        <span class="cov8" title="1">opts, err := i.getRemoteOpts()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("getting remote options: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">logger.Printf("pushing image to %s", ref.String())
+        err = remoteWrite(ref, i.ImageRef, opts...)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("pushing image %q: %v", i.ImageRef, err)
+        }</span>
+
+        <span class="cov8" title="1">logger.Printf("successfully pushed image %q", i.Name)
+        return nil</span>
+}
+
+func (i *Images) buildTargetReference(src name.Reference) (name.Reference, error) <span class="cov8" title="1">{
+        repoPath := src.Context().RepositoryStr()
+        targetRepo := fmt.Sprintf("%s/mirror/%s", i.reg.RegistryURL, repoPath)
+
+        switch ref := src.(type) </span>{
+        case name.Tag:<span class="cov8" title="1">
+                return name.NewTag(fmt.Sprintf("%s:%s", targetRepo, ref.TagStr()), name.WeakValidation)</span>
+        case name.Digest:<span class="cov8" title="1">
+                return name.NewDigest(fmt.Sprintf("%s@%s", targetRepo, ref.DigestStr()), name.WeakValidation)</span>
+        default:<span class="cov0" title="0">
+                return name.ParseReference(targetRepo)</span>
+        }
+}
+
+func (i *Images) getRemoteOpts() ([]remote.Option, error) <span class="cov8" title="1">{
+        // Create a custom HTTP transport
+        tlsConfig := &amp;tls.Config{}
+
+        if i.Insecure </span><span class="cov0" title="0">{
+                tlsConfig.InsecureSkipVerify = true
+        }</span> else<span class="cov8" title="1"> if i.reg.RegistryCACert != "" </span><span class="cov8" title="1">{
+                // Load CA certificate
+                caCert, err := os.ReadFile(i.reg.RegistryCACert)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("reading CA certificate: %v", err)
+                }</span>
+
+                // Create a CA certificate pool
+                <span class="cov0" title="0">caCertPool := x509.NewCertPool()
+                caCertPool.AppendCertsFromPEM(caCert)
+                tlsConfig.RootCAs = caCertPool</span>
+        }
+
+        <span class="cov8" title="1">transport := &amp;http.Transport{
+                TLSClientConfig: tlsConfig,
+        }
+
+        authFile, err := i.reg.GetUserFromAuthFile()
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("reading auth file: %v", err)
+        }</span>
+
+        // Create a registry authenticator
+        <span class="cov8" title="1">auth := &amp;authn.Basic{
+                Username: authFile[0],
+                Password: authFile[1],
+        }
+
+        remoteOpts := []remote.Option{
+                remote.WithTransport(transport),
+                remote.WithAuth(auth),
+        }
+
+        // Remote options with custom HTTP client and authenticator
+        return remoteOpts, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package logger
+
+import (
+"log"
+)
+
+var logFatal = log.Fatal
+var logFatalf = log.Fatalf
+
+var Debug bool
+
+func Debugf(format string, v ...interface{}) <span class="cov8" title="1">{
+if Debug </span><span class="cov8" title="1">{
+log.Printf("[DEBUG] " + format, v...)
+}</span>
+}
+
+func Printf(format string, v ...interface{}) <span class="cov8" title="1">{
+log.Printf(format, v...)
+}</span>
+
+func Println(v ...interface{}) <span class="cov8" title="1">{
+log.Println(v...)
+}</span>
+
+func Fatal(v ...interface{}) <span class="cov8" title="1">{
+logFatal(v...)
+}</span>
+
+func Fatalf(format string, v ...interface{}) <span class="cov8" title="1">{
+logFatalf(format, v...)
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package registry
+
+import (
+        "bytes"
+        "context"
+        "crypto/tls"
+        "crypto/x509"
+        "encoding/base64"
+        "encoding/json"
+        "fmt"
+        "github.com/alknopfler/seactl/pkg/logger"
+        "net/http"
+        "os"
+        "os/exec"
+        "strings"
+
+        "github.com/google/go-containerregistry/pkg/authn"
+        "github.com/google/go-containerregistry/pkg/name"
+        "github.com/google/go-containerregistry/pkg/v1/remote"
+        http_auth "github.com/josegomezr/go-http-auth-challenge"
+)
+
+type Registry struct {
+        RegistryAuthFile string
+        RegistryURL      string
+        RegistryCACert   string
+        RegistryInsecure bool
+}
+
+type authTransport struct {
+        base     http.RoundTripper
+        username string
+        password string
+}
+
+func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) <span class="cov8" title="1">{
+        resp, err := t.base.RoundTrip(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if resp.StatusCode == http.StatusUnauthorized </span><span class="cov8" title="1">{
+                authHeader := resp.Header.Get("Www-Authenticate")
+                if authHeader != "" </span><span class="cov8" title="1">{
+                        challenges, errParse := http_auth.ParseChallenges(authHeader)
+                        if errParse == nil &amp;&amp; len(challenges) &gt; 0 </span><span class="cov8" title="1">{
+                                challenge := challenges[0]
+                                if strings.EqualFold(challenge.Scheme, "Basic") </span><span class="cov8" title="1">{
+                                        resp.Body.Close()
+                                        reqCopy := req.Clone(req.Context())
+                                        reqCopy.SetBasicAuth(t.username, t.password)
+                                        return t.base.RoundTrip(reqCopy)
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov0" title="0">return resp, nil</span>
+}
+
+var (
+        execCommand   = exec.Command
+        remoteCatalog = remote.Catalog
+)
+
+func New(registryAuthFile, registryURL, registryCACert string, insecure bool) *Registry <span class="cov8" title="1">{
+        return &amp;Registry{
+                RegistryAuthFile: registryAuthFile,
+                RegistryURL:      registryURL,
+                RegistryCACert:   registryCACert,
+                RegistryInsecure: insecure,
+        }
+}</span>
+
+func (r *Registry) RegistryHelmLogin() error <span class="cov8" title="1">{
+        var args, auth []string
+        args = append(args, "registry", "login", r.RegistryURL)
+
+        auth, err := r.GetUserFromAuthFile()
+        if err == nil </span><span class="cov8" title="1">{
+                if auth[0] != "" &amp;&amp; auth[1] != "" </span><span class="cov8" title="1">{
+                        args = append(args, "--username", auth[0], "--password", auth[1])
+                }</span>
+        }
+
+        <span class="cov8" title="1">if r.RegistryInsecure </span><span class="cov8" title="1">{
+                args = append(args, "--insecure")
+        }</span> else<span class="cov8" title="1"> if r.RegistryCACert != "" </span><span class="cov0" title="0">{
+                args = append(args, "--ca-file", r.RegistryCACert)
+        }</span>
+        <span class="cov8" title="1">cmd := execCommand("helm", args...)
+        err = cmd.Run()
+
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to login to the registry: %s", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">logger.Printf("successfully logged in to the helm registry %s", r.RegistryURL)
+        return nil</span>
+}
+
+func (r *Registry) RegistryLogin() error <span class="cov8" title="1">{
+        ctx := context.Background()
+        tlsConfig := &amp;tls.Config{}
+
+        if r.RegistryInsecure </span><span class="cov8" title="1">{
+                tlsConfig.InsecureSkipVerify = true
+        }</span> else<span class="cov8" title="1"> if r.RegistryCACert != "" </span><span class="cov8" title="1">{
+                // Load CA certificate
+                caCert, err := os.ReadFile(r.RegistryCACert)
+                if err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+
+                // Create a CA certificate pool
+                <span class="cov0" title="0">caCertPool := x509.NewCertPool()
+                caCertPool.AppendCertsFromPEM(caCert)
+                tlsConfig.RootCAs = caCertPool</span>
+        }
+
+        <span class="cov8" title="1">transport := &amp;http.Transport{
+                TLSClientConfig: tlsConfig,
+        }
+
+        authFileInfo, err := r.GetUserFromAuthFile()
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to get user credentials from authFile: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">auth := &amp;authn.Basic{
+                Username: authFileInfo[0],
+                Password: authFileInfo[1],
+        }
+
+        transportWithAuth := &amp;authTransport{
+                base:     transport,
+                username: authFileInfo[0],
+                password: authFileInfo[1],
+        }
+
+        // Create an HTTP client with the custom transport
+        client := &amp;http.Client{Transport: transportWithAuth}
+
+        // Remote options with custom HTTP client and authenticator
+        remoteOpts := remote.WithTransport(client.Transport)
+        authOpts := remote.WithAuth(auth)
+
+        ref, err := name.NewRegistry(r.RegistryURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid registry %q: %v", r.RegistryURL, err)
+        }</span>
+
+        <span class="cov8" title="1">_, err = remoteCatalog(ctx, ref, remoteOpts, authOpts)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("error pinging registry %q: %v", r.RegistryURL, err)
+        }</span>
+
+        <span class="cov8" title="1">logger.Printf("successfully authenticated to registry %q", r.RegistryURL)
+        return nil</span>
+}
+
+func (r *Registry) GetUserFromAuthFile() ([]string, error) <span class="cov8" title="1">{
+        // Read the content of the file
+        data, err := os.ReadFile(r.RegistryAuthFile)
+        if err != nil </span><span class="cov8" title="1">{
+                return []string{}, fmt.Errorf("failed to read auth file: %w", err)
+        }</span>
+
+        // Split the decoded string by ":" to get user and pass
+        <span class="cov8" title="1">parts := strings.SplitN(string(data), ":", 2)
+        if len(parts) != 2 </span><span class="cov8" title="1">{
+                return []string{}, fmt.Errorf("decoded data does not contain user:pass format")
+        }</span>
+
+        // Decode the base64 content
+        <span class="cov8" title="1">user, err := base64.StdEncoding.DecodeString(parts[0])
+        if err != nil </span><span class="cov8" title="1">{
+                return []string{}, fmt.Errorf("failed to decode base64 user: %w", err)
+        }</span>
+        <span class="cov8" title="1">pass, err := base64.StdEncoding.DecodeString(parts[1])
+        if err != nil </span><span class="cov0" title="0">{
+                return []string{}, fmt.Errorf("failed to decode base64 password: %w", err)
+        }</span>
+
+        // Return the user part
+        <span class="cov8" title="1">return []string{string(user), string(pass)}, nil</span>
+}
+
+func (r *Registry) CreateHarborProject(projectName string) error <span class="cov8" title="1">{
+        tlsConfig := &amp;tls.Config{}
+
+        if r.RegistryInsecure </span><span class="cov0" title="0">{
+                tlsConfig.InsecureSkipVerify = true
+        }</span> else<span class="cov8" title="1"> if r.RegistryCACert != "" </span><span class="cov8" title="1">{
+                caCert, err := os.ReadFile(r.RegistryCACert)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov8" title="1">caCertPool := x509.NewCertPool()
+                caCertPool.AppendCertsFromPEM(caCert)
+                tlsConfig.RootCAs = caCertPool</span>
+        }
+
+        <span class="cov8" title="1">transport := &amp;http.Transport{
+                TLSClientConfig: tlsConfig,
+        }
+        client := &amp;http.Client{Transport: transport}
+
+        payload := map[string]interface{}{
+                "project_name": projectName,
+                "public":       true,
+        }
+        body, _ := json.Marshal(payload)
+
+        scheme := "https"
+        if r.RegistryInsecure &amp;&amp; !strings.Contains(r.RegistryURL, "443") </span>{<span class="cov0" title="0">
+                // Default to https, Harbor forces https but user might bypass
+        }</span>
+
+        <span class="cov8" title="1">baseURL := r.RegistryURL
+        if !strings.HasPrefix(baseURL, "http") </span><span class="cov8" title="1">{
+                baseURL = fmt.Sprintf("%s://%s", scheme, baseURL)
+        }</span>
+        <span class="cov8" title="1">url := fmt.Sprintf("%s/api/v2.0/projects", baseURL)
+
+        req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        
+        authFileInfo, err := r.GetUserFromAuthFile()
+        if err == nil </span><span class="cov0" title="0">{
+                req.SetBasicAuth(authFileInfo[0], authFileInfo[1])
+        }</span>
+
+        <span class="cov8" title="1">logger.Debugf("Attempting to project '%s' using Harbor API at %s", projectName, url)
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Debugf("Failed to contact registry API to create project (likely not Harbor or network issue): %v", err)
+                return nil
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode == http.StatusNotFound </span><span class="cov0" title="0">{
+                logger.Debugf("Registry API returned 404, assuming standard Docker Registry, skipping project creation.")
+                return nil
+        }</span>
+        
+        <span class="cov0" title="0">if resp.StatusCode == http.StatusCreated </span><span class="cov0" title="0">{
+                logger.Printf("Successfully created Harbor project: %s", projectName)
+        }</span> else<span class="cov0" title="0"> if resp.StatusCode == http.StatusConflict </span><span class="cov0" title="0">{
+                logger.Debugf("Harbor project '%s' already exists.", projectName)
+        }</span> else<span class="cov0" title="0"> {
+                logger.Debugf("Harbor project creation returned unexpected status: %s", resp.Status)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package rke2
+
+import (
+        "fmt"
+        "io"
+        "github.com/alknopfler/seactl/pkg/logger"
+        "net/http"
+        "os"
+        "path/filepath"
+        "strings"
+)
+
+var (
+        RKE2ReleaseURL = "https://github.com/rancher/rke2/releases/download/"
+        RKE2URL        = "https://get.rke2.io"
+)
+
+var (
+        listRKE2Images = map[string]string{
+                "RKE2ImagesLinux":   "rke2-images.linux-amd64.tar.zst",
+                "RKE2ImagesCalico":  "rke2-images-calico.linux-amd64.tar.zst",
+                "RKE2ImagesFlannel": "rke2-images-flannel.linux-amd64.tar.zst",
+                "RKE2ImagesCilium":  "rke2-images-cilium.linux-amd64.tar.zst",
+                "RKE2ImagesCanal":   "rke2-images-canal.linux-amd64.tar.zst",
+                "RKE2ImagesMultus":  "rke2-images-multus.linux-amd64.tar.zst",
+                "RKE2ImagesCore":    "rke2-images-core.linux-amd64.tar.zst",
+                "RKE2Linux":         "rke2.linux-amd64.tar.gz",
+                "RKE2SHA256":        "sha256sum-amd64.txt",
+        }
+)
+
+type RKE2 struct {
+        Version          string
+        OutputDirTarball string
+        ReleaseURL       string
+}
+
+func New(version, outputDirTarball string) *RKE2 <span class="cov8" title="1">{
+        return &amp;RKE2{
+                Version:          version,
+                OutputDirTarball: outputDirTarball,
+                ReleaseURL:       RKE2ReleaseURL,
+        }
+}</span>
+
+func (r *RKE2) Download() error <span class="cov8" title="1">{
+        // Create the destination directory if it doesn't exist
+        if err := os.MkdirAll(r.OutputDirTarball, os.ModePerm); err != nil </span><span class="cov0" title="0">{
+                logger.Printf("failed to create destination directory: %v", err)
+                return err
+        }</span>
+
+        // Download the install.sh script
+        <span class="cov8" title="1">if getFileFromURL(RKE2URL, "install.sh", ensureTrailingSlash(r.OutputDirTarball)) != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to download the install.sh script")
+        }</span>
+
+        // Download the tarball files for the current release
+        <span class="cov8" title="1">for _, image := range listRKE2Images </span><span class="cov8" title="1">{
+                if getFileFromURL(r.ReleaseURL+replaceVersionLink(r.Version)+"/"+image, image, ensureTrailingSlash(r.OutputDirTarball)) != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to download the file: %s", image)
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (r *RKE2) Verify() error <span class="cov8" title="1">{
+        // verify if all images have been downloaded successfully
+        for _, image := range listRKE2Images </span><span class="cov8" title="1">{
+                filePath := filepath.Join(ensureTrailingSlash(r.OutputDirTarball), image)
+                if _, err := os.Stat(filePath); os.IsNotExist(err) </span><span class="cov8" title="1">{
+                        logger.Printf("file does not exist: %s", filePath)
+                        return err
+                }</span>
+                <span class="cov8" title="1">logger.Printf("Image verified successfully: %s", filePath)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (r *RKE2) Upload() error <span class="cov8" title="1">{
+        // Upload the tarball files to the registry
+        // TODO: implement me if needed (prepared if we change the airgap with rke2-capi-provider to use registry instead of artifacts)
+        return nil
+}</span>
+
+func replaceVersionLink(version string) string <span class="cov8" title="1">{
+        return strings.ReplaceAll(version, "+", "%2B")
+}</span>
+
+func ensureTrailingSlash(dir string) string <span class="cov8" title="1">{
+        if !strings.HasSuffix(dir, "/") </span><span class="cov8" title="1">{
+                dir += "/"
+        }</span>
+        <span class="cov8" title="1">return dir</span>
+}
+
+func getFileFromURL(url, filename, filePath string) error <span class="cov8" title="1">{
+        resp, err := http.Get(url)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Printf("failed to download the file %s, %v", filename, err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                logger.Printf("failed to download the file %s from %s: HTTP status %s", filename, url, resp.Status)
+                return fmt.Errorf("failed to download the file %s from %s: HTTP status %s", filename, url, resp.Status)
+        }</span>
+
+        // Create the file
+        <span class="cov8" title="1">out, err := os.Create(filePath + filename)
+
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Printf("failed to create file: %v", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">_, err = io.Copy(out, resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Printf("failed to save file: %v", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">logger.Printf("File %s downloaded successfully to %s", filename, filePath)
+
+        defer resp.Body.Close()
+        defer out.Close()
+        return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

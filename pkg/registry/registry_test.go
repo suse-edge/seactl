@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"net/http"
+	"net/http/httptest"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -157,4 +159,36 @@ func TestRegistryLogin_FailCatalog(t *testing.T) {
 
 	err := r.RegistryLogin()
 	assert.Error(t, err)
+}
+
+func TestAuthTransport_RoundTrip(t *testing.T) {
+ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+w.Header().Set("WWW-Authenticate", "Basic realm=\"Registry Realm\"")
+w.WriteHeader(http.StatusUnauthorized)
+}))
+defer ts.Close()
+
+transport := &authTransport{
+base: http.DefaultTransport,
+username:  "testuser",
+password:  "testpass",
+}
+
+req, _ := http.NewRequest("GET", ts.URL, nil)
+resp, err := transport.RoundTrip(req)
+assert.NoError(t, err)
+assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestCreateHarborProject(t *testing.T) {
+ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+assert.Equal(t, "/api/v2.0/projects", r.URL.Path)
+assert.Equal(t, "POST", r.Method)
+w.WriteHeader(http.StatusCreated)
+}))
+defer ts.Close()
+
+r := New(ts.URL, "user", "/dev/null", false)
+err := r.CreateHarborProject("edge")
+assert.NoError(t, err)
 }

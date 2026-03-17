@@ -143,3 +143,48 @@ func TestReadAirgapManifest_InvalidYAMLImages(t *testing.T) {
 	_, _, err := ReadAirgapManifest("1.0.0", "factory")
 	assert.Error(t, err)
 }
+
+func TestRealExtractFileFromContainer_Failure(t *testing.T) {
+	oldExec := execCommand
+	execCommand = fakeExecCommandFail
+	defer func() { execCommand = oldExec }()
+	_, err := extractFileFromContainer("fake-image", "fake-path")
+	assert.Error(t, err)
+}
+
+func TestRealExtractFileFromContainer_CreateFailure(t *testing.T) {
+	oldExec := execCommand
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		if command == "podman" && args[0] == "pull" {
+			return fakeExecCommandSuccess(command, args...)
+		}
+		if command == "podman" && args[0] == "create" {
+			return fakeExecCommandFail(command, args...)
+		}
+		return fakeExecCommandSuccess(command, args...)
+	}
+	defer func() { execCommand = oldExec }()
+	_, err := extractFileFromContainer("fake-image", "fake-path")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create container")
+}
+
+func TestRealExtractFileFromContainer_ExtractFailure(t *testing.T) {
+	oldExec := execCommand
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		if command == "podman" && args[0] == "pull" {
+			return fakeExecCommandSuccess(command, args...)
+		}
+		if command == "podman" && args[0] == "create" {
+			return fakeExecCommandSuccess(command, args...)
+		}
+		if command == "podman" && args[0] == "cp" {
+			return fakeExecCommandFail(command, args...)
+		}
+		return fakeExecCommandSuccess(command, args...)
+	}
+	defer func() { execCommand = oldExec }()
+	_, err := extractFileFromContainer("fake-image", "fake-path")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to extract file")
+}

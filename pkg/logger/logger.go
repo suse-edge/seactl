@@ -4,6 +4,9 @@ import (
 "log"
 )
 
+var logFatal = log.Fatal
+var logFatalf = log.Fatalf
+
 var Debug bool
 
 func Debugf(format string, v ...interface{}) {
@@ -21,9 +24,9 @@ log.Println(v...)
 }
 
 func Fatal(v ...interface{}) {
-log.Fatal(v...)
+logFatal(v...)
 }
 
 func Fatalf(format string, v ...interface{}) {
-log.Fatalf(format, v...)
+logFatalf(format, v...)
 }

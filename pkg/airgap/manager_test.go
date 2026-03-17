@@ -6,6 +6,7 @@ import (
 
 	"github.com/alknopfler/seactl/pkg/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/alknopfler/seactl/pkg/registry"
 )
 
 func fakeReleaseManifest() (*config.ReleaseManifest, *config.ImagesManifest, error) {
@@ -58,4 +59,22 @@ func TestGenerateAirGapEnvironment_ErrorFromManifest(t *testing.T) {
 	}
 	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "auth", "auth", "rancher-auth", "ca", "/tmp", true)
 	assert.Error(t, err)
+}
+
+func TestGenerateRKE2Artifacts_NotDryRun(t *testing.T) {
+manifest, _, _ := fakeReleaseManifest()
+err := generateRKE2Artifacts(false, manifest, "/tmp")
+assert.Error(t, err)
+}
+
+func TestGenerateHelmArtifacts_NotDryRun(t *testing.T) {
+manifest, _, _ := fakeReleaseManifest()
+err := generateHelmArtifacts(false, manifest, &registry.Registry{}, &registry.Registry{})
+assert.Error(t, err)
+}
+
+func TestGenerateImagesArtifacts_NotDryRun(t *testing.T) {
+_, imagesManifest, _ := fakeReleaseManifest()
+err := generateImagesArtifacts(false, imagesManifest, &registry.Registry{}, &registry.Registry{})
+assert.Error(t, err)
 }

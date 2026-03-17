@@ -10,6 +10,7 @@ import (
 )
 
 var version = "dev"
+var osExit = os.Exit
 
 func init() {
 
@@ -35,7 +36,7 @@ func newCommand() *cobra.Command {
 			"\n",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
-			os.Exit(0)
+			osExit(0)
 		},
 		Version: version,
 	}
