@@ -78,11 +78,17 @@ seactl generate -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile ranch
 ```
 
 ```bash
-seactl generate -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt-a registry-auth.txt -r myregistry:5000 --insecure
+seactl generate -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt-a registry-auth.txt -r myregistry:5000 --insecure --debug
 ```
 
 ```bash 
 ./seactl generate -v 3.4.0 -m production -o ./tmp/airgap -r localhost:3000 -d true
+```
+
+Proxy supported:
+```bash
+export HTTPS_PROXY=http://10.X.X.X:3128
+./seactl generate -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
 ```
 
 ## Developer
