@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alknopfler/seactl/pkg/airgap"
+	"github.com/alknopfler/seactl/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +18,7 @@ var (
 	registryInsecure    bool
 	outputDirTarball    string
 	dryRun              bool
+	debug               bool
 )
 
 func NewAirGapCommand() *cobra.Command {
@@ -24,6 +26,9 @@ func NewAirGapCommand() *cobra.Command {
 		Use:   "generate",
 		Short: "Command to generate the air-gap artifacts from the airgap manifest",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Set global debug flag
+			logger.Debug = debug
+
 			// Check helm
 			if err := airgap.CheckHelmCommand(); err != nil {
 				return err
@@ -58,6 +63,7 @@ func NewAirGapCommand() *cobra.Command {
 	flags.BoolVarP(&registryInsecure, "insecure", "k", false, "Skip TLS verification")
 	flags.StringVarP(&outputDirTarball, "output", "o", "", "Output directory for tarball files")
 	flags.BoolVarP(&dryRun, "dry-run", "d", false, "Dry run mode")
+	flags.BoolVar(&debug, "debug", false, "Enable debug logging")
 
 	// Required flags
 	c.MarkFlagRequired("release-version")

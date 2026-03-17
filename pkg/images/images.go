@@ -4,10 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"strings"
 
+	"github.com/alknopfler/seactl/pkg/logger"
 	"github.com/alknopfler/seactl/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -16,10 +17,11 @@ import (
 )
 
 type Images struct {
-	Name     string
-	Insecure bool // If true, skip TLS verification
-	reg      *registry.Registry
-	ImageRef v1.Image
+	Name           string
+	Insecure       bool // If true, skip TLS verification
+	reg            *registry.Registry
+	rancherAppsReg *registry.Registry
+	ImageRef       v1.Image
 }
 
 var (
@@ -27,31 +29,47 @@ var (
 	remoteWrite = remote.Write
 )
 
-func New(name string, reg *registry.Registry) *Images {
+func New(name string, reg *registry.Registry, rancherAppsReg *registry.Registry) *Images {
 	return &Images{
-		Name: name,
-
-		reg: reg,
+		Name:           name,
+		reg:            reg,
+		rancherAppsReg: rancherAppsReg,
 	}
 }
 
 func (i *Images) Download() error {
+	logger.Debugf("Starting to download image %s", i.Name)
 	ref, err := name.ParseReference(i.Name)
 	if err != nil {
-		log.Printf("failed to parse image reference %v", err)
+		logger.Printf("failed to parse image reference %v", err)
 		return err
 	}
 
-	fmt.Println(ref)
+	logger.Debugf("Parsed reference: %v", ref)
 
-	img, err := remoteImage(ref)
+	var remoteOpts []remote.Option
+	if strings.HasPrefix(i.Name, "dp.apps.rancher.io") && i.rancherAppsReg != nil {
+		authFile, err := i.rancherAppsReg.GetUserFromAuthFile()
+		if err == nil {
+			auth := &authn.Basic{
+				Username: authFile[0],
+				Password: authFile[1],
+			}
+			remoteOpts = append(remoteOpts, remote.WithAuth(auth))
+			logger.Debugf("Using rancher apps authentication for %s", i.Name)
+		} else {
+			logger.Debugf("Failed to read rancher apps auth file: %v", err)
+		}
+	}
+
+	img, err := remoteImage(ref, remoteOpts...)
 	if err != nil {
-		log.Printf("pulling image %q: %v", img, err)
+		logger.Printf("pulling image %q: %v", img, err)
 		return err
 	}
 
 	i.ImageRef = img
-	log.Printf("successfully pulled image %q", img)
+	logger.Printf("successfully pulled image %q", i.Name)
 	return nil
 }
 
@@ -76,19 +94,19 @@ func (i *Images) Upload() error {
 		return fmt.Errorf("getting remote options: %v", err)
 	}
 
-	log.Printf("pushing image to %s", ref.String())
+	logger.Printf("pushing image to %s", ref.String())
 	err = remoteWrite(ref, i.ImageRef, opts...)
 	if err != nil {
 		return fmt.Errorf("pushing image %q: %v", i.ImageRef, err)
 	}
 
-	log.Printf("successfully pushed image %q", i.ImageRef)
+	logger.Printf("successfully pushed image %q", i.Name)
 	return nil
 }
 
 func (i *Images) buildTargetReference(src name.Reference) (name.Reference, error) {
 	repoPath := src.Context().RepositoryStr()
-	targetRepo := fmt.Sprintf("%s/%s", i.reg.RegistryURL, repoPath)
+	targetRepo := fmt.Sprintf("%s/mirror/%s", i.reg.RegistryURL, repoPath)
 
 	switch ref := src.(type) {
 	case name.Tag:

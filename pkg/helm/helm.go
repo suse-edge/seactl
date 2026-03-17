@@ -2,12 +2,12 @@ package helm
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/alknopfler/seactl/pkg/logger"
 	"github.com/alknopfler/seactl/pkg/registry"
 )
 
@@ -59,21 +59,30 @@ func (h *Helm) Download() error {
 	}
 	// Execute the command
 	cmd := execCommand("helm", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = nil
+	
+	if logger.Debug {
+		logger.Debugf("Executing command: helm %s\n", strings.Join(args, " "))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	} else {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = nil
+	}
 
 	if err := cmd.Run(); err != nil {
-		log.Printf("failed to download chart %s: %v", h.Chart, err)
+		logger.Printf("failed to download chart %s: %v", h.Chart, err)
 		return err
 	}
 
+	logger.Debugf("Successfully downloaded chart %s\n", h.Chart)
 	return nil
 }
 
 func (h *Helm) Verify() error {
+	logger.Debugf("Verifying downloaded chart for %s\n", h.Name)
 	_, err := h.findDownloadedChart()
 	if err != nil {
-		log.Printf("file does not exist to be verified %s", err.Error())
+		logger.Printf("file does not exist to be verified %s", err.Error())
 		return err
 	}
 	return nil
@@ -82,12 +91,12 @@ func (h *Helm) Verify() error {
 func (h *Helm) Upload() error {
 	chartPath, err := h.findDownloadedChart()
 	if err != nil {
-		log.Printf("file does not exist to be uploaded %s", err.Error())
+		logger.Printf("file does not exist to be uploaded %s", err.Error())
 		return err
 	}
 
 	var args []string
-	args = append(args, "push", chartPath, "oci://"+h.reg.RegistryURL)
+	args = append(args, "push", chartPath, "oci://"+h.reg.RegistryURL+"/mirror")
 
 	if h.Insecure {
 		args = append(args, "--insecure-skip-tls-verify")
@@ -96,26 +105,51 @@ func (h *Helm) Upload() error {
 	}
 
 	cmd := execCommand("helm", args...)
+	if logger.Debug {
+		logger.Debugf("Executing upload command: helm %s\n", strings.Join(args, " "))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+	
 	err = cmd.Run()
 	if err != nil {
-		log.Printf("failed to push to the registry: %s", err)
+		logger.Printf("failed to push to the registry: %s", err)
 		return err
 	}
+	logger.Debugf("Successfully uploaded chart %s\n", h.Name)
 	defer os.Remove(chartPath)
 	return nil
 }
 
 func (h *Helm) findDownloadedChart() (string, error) {
-	pattern := fmt.Sprintf("%s*.tgz", h.Name)
+	parts := strings.Split(h.Chart, "/")
+	chartBase := parts[len(parts)-1]
+	
+	// Helm might save the file with or without a 'v' prefix depending on the chart's Chart.yaml version field.
+	// We'll strip any 'v' first, then try both ways.
+	cleanVersion := strings.TrimPrefix(h.Version, "v")
+	
+	pattern := fmt.Sprintf("%s-%s.tgz", chartBase, cleanVersion)
 	matches, err := filepath.Glob(filepath.Join(tempDir, pattern))
 	if err != nil {
 		return "", err
 	}
+	
+	if len(matches) == 0 {
+		// Fallback to v-prefixed version
+		pattern = fmt.Sprintf("%s-v%s.tgz", chartBase, cleanVersion)
+		matches, err = filepath.Glob(filepath.Join(tempDir, pattern))
+		if err != nil {
+			return "", err
+		}
+	}
+	
+	logger.Debugf("Looking for downloaded chart using pattern %s (chart: %s, version: %s), found matches: %v", pattern, h.Chart, h.Version, matches)
 	if len(matches) == 0 {
 		return "", os.ErrNotExist
 	}
 	if len(matches) > 1 {
-		return "", fmt.Errorf("multiple chart archives found for %s", h.Name)
+		return "", fmt.Errorf("multiple chart archives found for %s (pattern %s): %v", h.Name, pattern, matches)
 	}
 	return matches[0], nil
 }

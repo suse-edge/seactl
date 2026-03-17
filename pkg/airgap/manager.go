@@ -3,7 +3,7 @@ package airgap
 import (
 	"errors"
 	"fmt"
-	"log"
+	"github.com/alknopfler/seactl/pkg/logger"
 	"os/exec"
 	"sync"
 
@@ -63,6 +63,9 @@ var GenerateAirGapEnvironment = func(
 		if err := reg.RegistryHelmLogin(); err != nil {
 			return err
 		}
+		
+		// Attempt to create the 'edge' project on Harbor specifically, ignores errors if not Harbor
+		reg.CreateHarborProject("mirror")
 	}
 
 	go func() {
@@ -82,7 +85,7 @@ var GenerateAirGapEnvironment = func(
 	}()
 
 	go func() {
-		err = generateImagesArtifacts(dryrun, imagesManifest, reg)
+		err = generateImagesArtifacts(dryrun, imagesManifest, reg, rancherAppsReg)
 		if err != nil {
 			fatalErrors <- err
 		}
@@ -99,7 +102,7 @@ var GenerateAirGapEnvironment = func(
 		return nil
 	case err = <-fatalErrors:
 		close(fatalErrors)
-		log.Fatal("Error found running the program: ", err)
+		logger.Fatal("Error found running the program: ", err)
 		return err
 	}
 }
@@ -114,9 +117,9 @@ func generateRKE2Artifacts(dryrun bool, airgapManifest *config.ReleaseManifest, 
 			return err
 		}
 	} else {
-		log.Println("Dry run mode enabled, skipping download and verification of RKE2 images.")
+		logger.Println("Dry run mode enabled, skipping download and verification of RKE2 images.")
 	}
-	log.Println(color.InGreen("RKE2 Images downloaded and verified successfully! you can find them in: " + outputDirTarball))
+	logger.Println(color.InGreen("RKE2 Images downloaded and verified successfully! you can find them in: " + outputDirTarball))
 	return nil
 }
 
@@ -136,19 +139,19 @@ func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest,
 			if err := h.Upload(); err != nil {
 				return err
 			}
-			log.Printf(color.InGreen("Helm chart %s prepared and uploaded successfully!\n"), value.ReleaseName)
+			logger.Printf(color.InGreen("Helm chart %s prepared and uploaded successfully!\n"), value.ReleaseName)
 		} else {
-			log.Println("DryRun mode - Helm Chart Info:")
-			log.Printf("\nName: %s\nVersion: %s\nURL: %s\nChart: %s\n", h.Name, h.Version, h.URL, h.Chart)
+			logger.Println("DryRun mode - Helm Chart Info:")
+			logger.Printf("\nName: %s\nVersion: %s\nURL: %s\nChart: %s\n", h.Name, h.Version, h.URL, h.Chart)
 		}
 	}
-	log.Println(color.InGreen("Helm Chart artifacts pre-loaded in registry successfully!"))
+	logger.Println(color.InGreen("Helm Chart artifacts pre-loaded in registry successfully!"))
 	return nil
 }
 
-func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest, reg *registry.Registry) error {
+func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest, reg *registry.Registry, rancherAppsReg *registry.Registry) error {
 	for _, value := range imagesManifest.Images {
-		img := images.New(value.Name, reg)
+		img := images.New(value.Name, reg, rancherAppsReg)
 		if !dryrun {
 			if err := img.Download(); err != nil {
 				return err
@@ -165,10 +168,10 @@ func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest,
 				return err
 			}
 		} else {
-			log.Println("DryRun mode - Image Info:")
-			log.Printf("\nName: %s\n", img.Name)
+			logger.Println("DryRun mode - Image Info:")
+			logger.Printf("\nName: %s\n", img.Name)
 		}
 	}
-	log.Println(color.InGreen("Images artifacts pre-loaded in registry successfully!"))
+	logger.Println(color.InGreen("Images artifacts pre-loaded in registry successfully!"))
 	return nil
 }

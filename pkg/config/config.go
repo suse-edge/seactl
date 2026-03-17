@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
-	"log"
+	"github.com/alknopfler/seactl/pkg/logger"
 	"os/exec"
 	"strings"
 )
@@ -39,25 +39,25 @@ func ReadAirgapManifest(version, mode string) (*ReleaseManifest, *ImagesManifest
 	// Read files content
 	releaseManifestData, err := extractFileFromContainer(input, releaseManifestPath)
 	if err != nil {
-		log.Printf("failed to read file: %v", err)
+		logger.Printf("failed to read file: %v", err)
 		return nil, nil, err
 	}
 
 	releaseImagesData, err := extractFileFromContainer(input, releaseImagesPath)
 	if err != nil {
-		log.Printf("failed to read file: %v", err)
+		logger.Printf("failed to read file: %v", err)
 		return nil, nil, err
 	}
 
 	// Unmarshal YAML into struct
 	var releaseManifest ReleaseManifest
 	if err := yaml.Unmarshal(releaseManifestData, &releaseManifest); err != nil {
-		log.Printf("failed to unmarshal YAML: %v", err)
+		logger.Printf("failed to unmarshal YAML: %v", err)
 		return nil, nil, err
 	}
 	var releaseImages ImagesManifest
 	if err := yaml.Unmarshal(releaseImagesData, &releaseImages); err != nil {
-		log.Printf("failed to unmarshal YAML: %v", err)
+		logger.Printf("failed to unmarshal YAML: %v", err)
 		return nil, nil, err
 	}
 

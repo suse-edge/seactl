@@ -63,6 +63,7 @@ Flags:
 -d, --dryrun                     Dry run mode, only print the actions without executing them
 -m, --release-mode string        Release mode, can be 'factory' or 'production' (default "factory")
 -v, --release-version string     Release version, e.g. 3.4.0 (X.Y.Z)
+    --debug                      Debug mode with more logs verbosity
 ```
 
 Check the installed version:

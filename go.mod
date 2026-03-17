@@ -1,8 +1,6 @@
 module github.com/alknopfler/seactl
 
-go 1.22.0
-
-toolchain go1.22.5
+go 1.23.4
 
 require (
 	github.com/TwiN/go-color v1.4.1
@@ -21,6 +19,7 @@ require (
 	github.com/docker/docker-credential-helpers v0.8.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/josegomezr/go-http-auth-challenge v0.3.0 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

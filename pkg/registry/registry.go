@@ -1,12 +1,14 @@
 package registry
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/alknopfler/seactl/pkg/logger"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,6 +17,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	http_auth "github.com/josegomezr/go-http-auth-challenge"
 )
 
 type Registry struct {
@@ -22,6 +25,36 @@ type Registry struct {
 	RegistryURL      string
 	RegistryCACert   string
 	RegistryInsecure bool
+}
+
+type authTransport struct {
+	base     http.RoundTripper
+	username string
+	password string
+}
+
+func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.base.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		authHeader := resp.Header.Get("Www-Authenticate")
+		if authHeader != "" {
+			challenges, errParse := http_auth.ParseChallenges(authHeader)
+			if errParse == nil && len(challenges) > 0 {
+				challenge := challenges[0]
+				if strings.EqualFold(challenge.Scheme, "Basic") {
+					resp.Body.Close()
+					reqCopy := req.Clone(req.Context())
+					reqCopy.SetBasicAuth(t.username, t.password)
+					return t.base.RoundTrip(reqCopy)
+				}
+			}
+		}
+	}
+	return resp, nil
 }
 
 var (
@@ -58,10 +91,10 @@ func (r *Registry) RegistryHelmLogin() error {
 	err = cmd.Run()
 
 	if err != nil {
-		log.Printf("failed to login to the registry: %s", err)
+		logger.Printf("failed to login to the registry: %s", err)
 		return err
 	}
-	log.Printf("successfully logged in to the helm registry %s", r.RegistryURL)
+	logger.Printf("successfully logged in to the helm registry %s", r.RegistryURL)
 	return nil
 }
 
@@ -88,9 +121,6 @@ func (r *Registry) RegistryLogin() error {
 		TLSClientConfig: tlsConfig,
 	}
 
-	// Create an HTTP client with the custom transport
-	client := &http.Client{Transport: transport}
-
 	authFileInfo, err := r.GetUserFromAuthFile()
 	if err != nil {
 		return fmt.Errorf("failed to get user credentials from authFile: %w", err)
@@ -100,6 +130,15 @@ func (r *Registry) RegistryLogin() error {
 		Username: authFileInfo[0],
 		Password: authFileInfo[1],
 	}
+
+	transportWithAuth := &authTransport{
+		base:     transport,
+		username: authFileInfo[0],
+		password: authFileInfo[1],
+	}
+
+	// Create an HTTP client with the custom transport
+	client := &http.Client{Transport: transportWithAuth}
 
 	// Remote options with custom HTTP client and authenticator
 	remoteOpts := remote.WithTransport(client.Transport)
@@ -115,7 +154,7 @@ func (r *Registry) RegistryLogin() error {
 		return fmt.Errorf("error pinging registry %q: %v", r.RegistryURL, err)
 	}
 
-	log.Printf("successfully authenticated to registry %q", r.RegistryURL)
+	logger.Printf("successfully authenticated to registry %q", r.RegistryURL)
 	return nil
 }
 
@@ -144,4 +183,75 @@ func (r *Registry) GetUserFromAuthFile() ([]string, error) {
 
 	// Return the user part
 	return []string{string(user), string(pass)}, nil
+}
+
+func (r *Registry) CreateHarborProject(projectName string) error {
+	tlsConfig := &tls.Config{}
+
+	if r.RegistryInsecure {
+		tlsConfig.InsecureSkipVerify = true
+	} else if r.RegistryCACert != "" {
+		caCert, err := os.ReadFile(r.RegistryCACert)
+		if err != nil {
+			return err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	client := &http.Client{Transport: transport}
+
+	payload := map[string]interface{}{
+		"project_name": projectName,
+		"public":       true,
+	}
+	body, _ := json.Marshal(payload)
+
+	scheme := "https"
+	if r.RegistryInsecure && !strings.Contains(r.RegistryURL, "443") {
+		// Default to https, Harbor forces https but user might bypass
+	}
+
+	baseURL := r.RegistryURL
+	if !strings.HasPrefix(baseURL, "http") {
+		baseURL = fmt.Sprintf("%s://%s", scheme, baseURL)
+	}
+	url := fmt.Sprintf("%s/api/v2.0/projects", baseURL)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	authFileInfo, err := r.GetUserFromAuthFile()
+	if err == nil {
+		req.SetBasicAuth(authFileInfo[0], authFileInfo[1])
+	}
+
+	logger.Debugf("Attempting to project '%s' using Harbor API at %s", projectName, url)
+	resp, err := client.Do(req)
+	if err != nil {
+		logger.Debugf("Failed to contact registry API to create project (likely not Harbor or network issue): %v", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		logger.Debugf("Registry API returned 404, assuming standard Docker Registry, skipping project creation.")
+		return nil
+	}
+	
+	if resp.StatusCode == http.StatusCreated {
+		logger.Printf("Successfully created Harbor project: %s", projectName)
+	} else if resp.StatusCode == http.StatusConflict {
+		logger.Debugf("Harbor project '%s' already exists.", projectName)
+	} else {
+		logger.Debugf("Harbor project creation returned unexpected status: %s", resp.Status)
+	}
+	return nil
 }

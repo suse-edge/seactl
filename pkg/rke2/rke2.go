@@ -3,7 +3,7 @@ package rke2
 import (
 	"fmt"
 	"io"
-	"log"
+	"github.com/alknopfler/seactl/pkg/logger"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -46,7 +46,7 @@ func New(version, outputDirTarball string) *RKE2 {
 func (r *RKE2) Download() error {
 	// Create the destination directory if it doesn't exist
 	if err := os.MkdirAll(r.OutputDirTarball, os.ModePerm); err != nil {
-		log.Printf("failed to create destination directory: %v", err)
+		logger.Printf("failed to create destination directory: %v", err)
 		return err
 	}
 
@@ -69,10 +69,10 @@ func (r *RKE2) Verify() error {
 	for _, image := range listRKE2Images {
 		filePath := filepath.Join(ensureTrailingSlash(r.OutputDirTarball), image)
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			log.Printf("file does not exist: %s", filePath)
+			logger.Printf("file does not exist: %s", filePath)
 			return err
 		}
-		log.Printf("Image verified successfully: %s", filePath)
+		logger.Printf("Image verified successfully: %s", filePath)
 	}
 	return nil
 }
@@ -97,12 +97,12 @@ func ensureTrailingSlash(dir string) string {
 func getFileFromURL(url, filename, filePath string) error {
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("failed to download the file %s, %v", filename, err)
+		logger.Printf("failed to download the file %s, %v", filename, err)
 		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("failed to download the file %s from %s: HTTP status %s", filename, url, resp.Status)
+		logger.Printf("failed to download the file %s from %s: HTTP status %s", filename, url, resp.Status)
 		return fmt.Errorf("failed to download the file %s from %s: HTTP status %s", filename, url, resp.Status)
 	}
 
@@ -110,15 +110,15 @@ func getFileFromURL(url, filename, filePath string) error {
 	out, err := os.Create(filePath + filename)
 
 	if err != nil {
-		log.Printf("failed to create file: %v", err)
+		logger.Printf("failed to create file: %v", err)
 		return err
 	}
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		log.Printf("failed to save file: %v", err)
+		logger.Printf("failed to save file: %v", err)
 		return err
 	}
-	log.Printf("File %s downloaded successfully to %s", filename, filePath)
+	logger.Printf("File %s downloaded successfully to %s", filename, filePath)
 
 	defer resp.Body.Close()
 	defer out.Close()
