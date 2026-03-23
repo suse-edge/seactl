@@ -9,20 +9,49 @@ import (
 	"gopkg.in/yaml.v2"
 	"os/exec"
 	"strings"
+	"os"
 )
 
-const (
+var (
 	// releaseMode factory url
 	factoryReleaseURL    = "registry.opensuse.org/isv/suse/edge/factory/test_manifest_images/release-manifest:%s"
 	productionReleaseURL = "registry.suse.com/edge/%s/release-manifest:%s"
-	releaseManifestPath  = "/release_manifest.yaml"
-	releaseImagesPath    = "/release_images.yaml"
+	ReleaseManifestPath  = "/release_manifest.yaml"
+	ReleaseImagesPath    = "/release_images.yaml"
 )
 
 var execCommand = exec.Command
 
 // Func ReadAirgapManifest from a release-version and pull it from release container, and return a ReleaseManifest struct or an error if something goes wrong
 func ReadAirgapManifest(version, mode string) (*ReleaseManifest, *ImagesManifest, error) {
+
+	// Check if we are in Container Mode (local files)
+	if version == "" && mode == "" {
+		logger.Printf("Running in Container Mode: Reading local manifests from %s and %s", ReleaseManifestPath, ReleaseImagesPath)
+		releaseManifestData, err := os.ReadFile(ReleaseManifestPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read local release manifest: %w", err)
+		}
+
+		releaseImagesData, err := os.ReadFile(ReleaseImagesPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read local images manifest: %w", err)
+		}
+
+		// Unmarshal YAML into struct
+		var releaseManifest ReleaseManifest
+		if err := yaml.Unmarshal(releaseManifestData, &releaseManifest); err != nil {
+			logger.Printf("failed to unmarshal YAML: %v", err)
+			return nil, nil, err
+		}
+		var releaseImages ImagesManifest
+		if err := yaml.Unmarshal(releaseImagesData, &releaseImages); err != nil {
+			logger.Printf("failed to unmarshal YAML: %v", err)
+			return nil, nil, err
+		}
+
+		return &releaseManifest, &releaseImages, nil
+	}
 
 	// Determine the input based on the mode
 	var input string
@@ -37,13 +66,13 @@ func ReadAirgapManifest(version, mode string) (*ReleaseManifest, *ImagesManifest
 	}
 
 	// Read files content
-	releaseManifestData, err := extractFileFromContainer(input, releaseManifestPath)
+	releaseManifestData, err := extractFileFromContainer(input, ReleaseManifestPath)
 	if err != nil {
 		logger.Printf("failed to read file: %v", err)
 		return nil, nil, err
 	}
 
-	releaseImagesData, err := extractFileFromContainer(input, releaseImagesPath)
+	releaseImagesData, err := extractFileFromContainer(input, ReleaseImagesPath)
 	if err != nil {
 		logger.Printf("failed to read file: %v", err)
 		return nil, nil, err

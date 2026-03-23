@@ -44,14 +44,14 @@ echo -n "mypassword" | base64
 
 3. Rancher Apps charts require authentication. Create a Rancher Apps auth file with the same base64 `user:pass` format described above. See [SUSE Storage installation docs](https://documentation.suse.com/suse-edge/3.5/html/edge/components-suse-storage.html#id-installing-suse-storage).
 
-The following command can be used to generate the airgap artifacts
+The following command can be used to mirror the airgap artifacts
 
 ```bash
 Usage:
-seactl generate [flags]
+seactl mirror [flags]
 
 Flags:
--h, --help                       help for generate
+-h, --help                       help for mirror
 -i, --input string               Release manifest file
 -k, --insecure                   Skip TLS verification in registry
 -o, --output string              Output directory to store the tarball files
@@ -60,9 +60,29 @@ Flags:
 -c, --registry-cacert string     Registry CA Certificate file
 -r, --registry-url string        Registry URL
 -d, --dryrun                     Dry run mode, only print the actions without executing them
--m, --release-mode string        Release mode, can be 'factory' or 'production' (default "factory")
--v, --release-version string     Release version, e.g. 3.4.0 (X.Y.Z)
+-m, --release-mode string        Release mode, can be 'factory' or 'production' (default "factory"). Only used if release-version is provided.
+-v, --release-version string     Release version, e.g. 3.4.0 (X.Y.Z). Start Binary Mode if provided.
     --debug                      Debug mode with more logs verbosity
+```
+
+## Modes of Operation
+
+### Binary Mode
+
+In this mode, you provide the `release-version` and `release-mode` flags. The tool will download the necessary manifests from the remote release source.
+
+Example:
+```bash
+seactl mirror -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
+```
+
+### Container Mode (Local Files inside Release Container)
+
+In this mode, you **omit** the `release-version` flag. The tool expects to find `/release_manifest.yaml` and `/release_images.yaml` in the local filesystem root (intended for containerized usage where these files are present).
+
+Example:
+```bash
+seactl mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
 ```
 
 Check the installed version:
@@ -71,24 +91,30 @@ Check the installed version:
 seactl --version
 ```
 
-## Example of usage
+## Examples
+
+### Binary Mode Examples
 
 ```bash
-seactl generate -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
-```
-
-```bash
-seactl generate -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt-a registry-auth.txt -r myregistry:5000 --insecure --debug
+seactl mirror -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -r myregistry:5000 --insecure --debug
 ```
 
 ```bash 
-./seactl generate -v 3.4.0 -m production -o ./tmp/airgap -r localhost:3000 -d true
+./seactl mirror -v 3.4.0 -m production -o ./tmp/airgap -r localhost:3000 -d true
 ```
 
-Proxy supported:
+### Container Mode Example
+
+```bash
+# This mode assumes /release_manifest.yaml and /release_images.yaml exist locally (e.g. inside the container)
+seactl mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -r myregistry:5000 --insecure --debug
+```
+
+### Proxy Support
+
 ```bash
 export HTTPS_PROXY=http://10.X.X.X:3128
-./seactl generate -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
+./seactl mirror -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
 ```
 
 ## Developer

@@ -23,8 +23,8 @@ var (
 
 func NewAirGapCommand() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "generate",
-		Short: "Command to generate the air-gap artifacts from the airgap manifest",
+		Use:   "mirror",
+		Short: "Command to mirror the air-gap artifacts from the airgap manifest",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Set global debug flag
 			logger.Debug = debug
@@ -34,14 +34,20 @@ func NewAirGapCommand() *cobra.Command {
 				return err
 			}
 
-			// Validate release mode
-			if releaseMode != "factory" && releaseMode != "production" {
-				return fmt.Errorf("invalid value for --release-mode: %s, allowed: 'factory' or 'production'", releaseMode)
-			}
-
-			// Validate release version format X.Y.Z
-			if releaseVersion == "" || len(releaseVersion) < 5 || releaseVersion[1] != '.' || releaseVersion[3] != '.' {
-				return fmt.Errorf("invalid release version format: %s, expected format X.Y.Z", releaseVersion)
+			// Validate flags only if release-version is present (Binary mode)
+			if releaseVersion != "" {
+				// Validate release mode
+				if releaseMode != "factory" && releaseMode != "production" {
+					return fmt.Errorf("invalid value for --release-mode: %s, allowed: 'factory' or 'production'", releaseMode)
+				}
+				// Validate release version format X.Y.Z
+				if len(releaseVersion) < 5 || releaseVersion[1] != '.' || releaseVersion[3] != '.' {
+					return fmt.Errorf("invalid release version format: %s, expected format X.Y.Z", releaseVersion)
+				}
+			} else {
+				// Container mode: validation is implicit (files must exist)
+				// We clear releaseMode to ensure it's empty so ReadAirgapManifest knows to use local files
+				releaseMode = ""
 			}
 
 			// Call airgap generation
@@ -66,7 +72,6 @@ func NewAirGapCommand() *cobra.Command {
 	flags.BoolVar(&debug, "debug", false, "Enable debug logging")
 
 	// Required flags
-	c.MarkFlagRequired("release-version")
 	c.MarkFlagRequired("output")
 	c.MarkFlagRequired("registry-url")
 	c.MarkFlagRequired("rancher-apps-authfile")

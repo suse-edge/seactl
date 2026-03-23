@@ -171,3 +171,38 @@ func TestGenerate_Success(t *testing.T) {
 	assert.True(t, generateParams.dryRun)
 	assert.True(t, generateParams.registryInsecure)
 }
+
+func TestContainerMode_Success(t *testing.T) {
+	// Reset params
+	helmCalled = false
+	generateParams = struct {
+		dryRun              bool
+		releaseVersion      string
+		releaseMode         string
+		registryURL         string
+		registryAuthFile    string
+		rancherAppsAuthFile string
+		registryCACert      string
+		outputDir           string
+		registryInsecure    bool
+	}{}
+
+	stdout, stderr, err := runCommand([]string{
+		"--registry-url", "local-reg",
+		"--rancher-apps-authfile", "rancher-auth",
+		"--output", "out-local",
+	})
+
+	// Should succeed without error
+	assert.NoError(t, err)
+	// No output if successful
+	assert.Equal(t, "", stdout)
+	assert.Equal(t, "", stderr)
+
+	// Check if generate called with empty version/mode
+	assert.True(t, helmCalled) // Assuming checkHelm is called before generate
+	assert.Equal(t, "", generateParams.releaseVersion)
+	assert.Equal(t, "", generateParams.releaseMode)
+	assert.Equal(t, "local-reg", generateParams.registryURL)
+	assert.Equal(t, "out-local", generateParams.outputDir)
+}

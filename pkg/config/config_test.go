@@ -188,3 +188,43 @@ func TestRealExtractFileFromContainer_ExtractFailure(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to extract file")
 }
+
+func TestReadAirgapManifest_LocalSuccess(t *testing.T) {
+	// Create temp files
+	f1, err := os.CreateTemp("", "release_manifest.yaml")
+	assert.NoError(t, err)
+	defer os.Remove(f1.Name())
+	f1.WriteString("kind: ReleaseManifest")
+	f1.Close()
+
+	f2, err := os.CreateTemp("", "release_images.yaml")
+	assert.NoError(t, err)
+	defer os.Remove(f2.Name())
+	f2.WriteString("kind: ImagesManifest")
+	f2.Close()
+
+	// Override paths
+	oldRM := ReleaseManifestPath
+	oldRI := ReleaseImagesPath
+	ReleaseManifestPath = f1.Name()
+	ReleaseImagesPath = f2.Name()
+	defer func() {
+		ReleaseManifestPath = oldRM
+		ReleaseImagesPath = oldRI
+	}()
+
+	rm, im, err := ReadAirgapManifest("", "")
+	assert.NoError(t, err)
+	assert.NotNil(t, rm)
+	assert.NotNil(t, im)
+}
+
+func TestReadAirgapManifest_LocalMissingFile(t *testing.T) {
+	oldRM := ReleaseManifestPath
+	ReleaseManifestPath = "/path/does/not/exist"
+	defer func() { ReleaseManifestPath = oldRM }()
+
+	_, _, err := ReadAirgapManifest("", "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read local release manifest")
+}
