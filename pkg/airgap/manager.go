@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/alknopfler/seactl/pkg/logger"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/TwiN/go-color"
@@ -32,11 +33,15 @@ var CheckHelmCommand = func() error {
 // ReadAirgapManifestFunc is assignable for testing
 var ReadAirgapManifestFunc = config.ReadAirgapManifest
 
+const (
+	susePrivateRegistryURL = "registry.suse.com"
+	rancherAppsRegistryURL = "dp.apps.rancher.io"
+)
 // GenerateAirGapEnvironment is assignable for testing
 var GenerateAirGapEnvironment = func(
 	dryrun bool,
 	releaseVersion, releaseMode,
-	registryURL, registryAuthFile, rancherAppsAuthFile, registryCACert,
+	registryURL, registryAuthFile, rancherAppsAuthFile, susePrivateRegistryAuthFile, registryCACert,
 	outputDirTarball string,
 	insecure bool,
 ) error {
@@ -51,7 +56,11 @@ var GenerateAirGapEnvironment = func(
 	}
 
 	reg := registry.New(registryAuthFile, registryURL, registryCACert, insecure)
-	rancherAppsReg := registry.New(rancherAppsAuthFile, "dp.apps.rancher.io", "", false)
+	rancherAppsReg := registry.New(rancherAppsAuthFile, rancherAppsRegistryURL, "", false)
+	var susePrivateRegistryReg *registry.Registry
+	if susePrivateRegistryAuthFile != "" {
+		susePrivateRegistryReg = registry.New(susePrivateRegistryAuthFile, susePrivateRegistryURL, "", false)
+	}
 
 	if !dryrun {
 		if err := reg.RegistryLogin(); err != nil {
@@ -59,6 +68,11 @@ var GenerateAirGapEnvironment = func(
 		}
 		if err := rancherAppsReg.RegistryHelmLogin(); err != nil {
 			return err
+		}
+		if susePrivateRegistryReg != nil {
+			if err := susePrivateRegistryReg.RegistryHelmLogin(); err != nil {
+				return err
+			}
 		}
 		if err := reg.RegistryHelmLogin(); err != nil {
 			return err
@@ -77,7 +91,7 @@ var GenerateAirGapEnvironment = func(
 	}()
 
 	go func() {
-		err = generateHelmArtifacts(dryrun, releaseManifest, reg, rancherAppsReg)
+		err = generateHelmArtifacts(dryrun, releaseManifest, reg, rancherAppsReg, susePrivateRegistryReg)
 		if err != nil {
 			fatalErrors <- err
 		}
@@ -85,7 +99,7 @@ var GenerateAirGapEnvironment = func(
 	}()
 
 	go func() {
-		err = generateImagesArtifacts(dryrun, imagesManifest, reg, rancherAppsReg)
+		err = generateImagesArtifacts(dryrun, imagesManifest, reg, rancherAppsReg, susePrivateRegistryReg)
 		if err != nil {
 			fatalErrors <- err
 		}
@@ -107,6 +121,22 @@ var GenerateAirGapEnvironment = func(
 	}
 }
 
+func shouldSkipSUSEPrivateRegistryChart(chart string, susePrivateRegistryReg *registry.Registry) bool {
+	if susePrivateRegistryReg != nil {
+		return false
+	}
+
+	return chart == "oci://registry.suse.com/private-registry/private-registry-helm"
+}
+
+func shouldSkipSUSEPrivateRegistryImage(image string, susePrivateRegistryReg *registry.Registry) bool {
+	if susePrivateRegistryReg != nil {
+		return false
+	}
+
+	return strings.HasPrefix(image, "registry.suse.com/private-registry/harbor")
+}
+
 func generateRKE2Artifacts(dryrun bool, airgapManifest *config.ReleaseManifest, outputDirTarball string) error {
 	r := rke2.New(airgapManifest.Spec.Components.Kubernetes.Rke2.Version, outputDirTarball)
 	if !dryrun {
@@ -123,8 +153,13 @@ func generateRKE2Artifacts(dryrun bool, airgapManifest *config.ReleaseManifest, 
 	return nil
 }
 
-func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest, reg *registry.Registry, rancherAppsReg *registry.Registry) error {
+func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest, reg *registry.Registry, rancherAppsReg *registry.Registry, susePrivateRegistryReg *registry.Registry) error {
 	for _, value := range releaseManifest.Spec.Components.Workloads.Helm {
+		if shouldSkipSUSEPrivateRegistryChart(value.Chart, susePrivateRegistryReg) {
+			logger.Printf("Skipping chart %s because --suse-private-registry-authfile was not provided", value.Chart)
+			continue
+		}
+
 		h := helm.New(value.ReleaseName, value.Version, value.Chart, value.Repository, reg)
 		if !dryrun {
 			if err := h.Download(); err != nil {
@@ -149,9 +184,14 @@ func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest,
 	return nil
 }
 
-func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest, reg *registry.Registry, rancherAppsReg *registry.Registry) error {
+func generateImagesArtifacts(dryrun bool, imagesManifest *config.ImagesManifest, reg *registry.Registry, rancherAppsReg *registry.Registry, susePrivateRegistryReg *registry.Registry) error {
 	for _, value := range imagesManifest.Images {
-		img := images.New(value.Name, reg, rancherAppsReg)
+		if shouldSkipSUSEPrivateRegistryImage(value.Name, susePrivateRegistryReg) {
+			logger.Printf("Skipping image %s because --suse-private-registry-authfile was not provided", value.Name)
+			continue
+		}
+
+		img := images.New(value.Name, reg, rancherAppsReg, susePrivateRegistryReg)
 		if !dryrun {
 			if err := img.Download(); err != nil {
 				return err

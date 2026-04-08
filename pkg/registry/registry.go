@@ -72,14 +72,14 @@ func New(registryAuthFile, registryURL, registryCACert string, insecure bool) *R
 }
 
 func (r *Registry) RegistryHelmLogin() error {
-	var args, auth []string
+	var args []string
 	args = append(args, "registry", "login", r.RegistryURL)
 
 	auth, err := r.GetUserFromAuthFile()
-	if err == nil {
-		if auth[0] != "" && auth[1] != "" {
-			args = append(args, "--username", auth[0], "--password", auth[1])
-		}
+	if err != nil {
+		logger.Printf("failed to read auth file for %s: %s", r.RegistryURL, err)
+	} else if auth[0] != "" && auth[1] != "" {
+		args = append(args, "--username", auth[0], "--password", auth[1])
 	}
 
 	if r.RegistryInsecure {
@@ -88,6 +88,8 @@ func (r *Registry) RegistryHelmLogin() error {
 		args = append(args, "--ca-file", r.RegistryCACert)
 	}
 	cmd := execCommand("helm", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	if cmd.Env == nil {
 		cmd.Env = append(os.Environ(),
 			"HELM_CONFIG_HOME=/tmp/.helm-config",
@@ -102,10 +104,9 @@ func (r *Registry) RegistryHelmLogin() error {
 		)
 	}
 	err = cmd.Run()
-
 	if err != nil {
-		logger.Printf("failed to login to the registry: %s", err)
-		return err
+		logger.Printf("failed to login to the helm registry %s: %s — %s", r.RegistryURL, err, stderr.String())
+		return fmt.Errorf("failed to login to helm registry %s: %w — %s", r.RegistryURL, err, stderr.String())
 	}
 	logger.Printf("successfully logged in to the helm registry %s", r.RegistryURL)
 	return nil

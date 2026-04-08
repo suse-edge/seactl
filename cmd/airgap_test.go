@@ -24,6 +24,7 @@ var (
 		registryURL         string
 		registryAuthFile    string
 		rancherAppsAuthFile string
+		susePrivateRegistryAuthFile string
 		registryCACert      string
 		outputDir           string
 		registryInsecure    bool
@@ -37,7 +38,7 @@ func fakeCheckHelm() error {
 }
 
 func fakeGenerate(
-	dryRun bool, rv, rm, url, auth, rancherAuth, cacert, out string, insecure bool,
+	dryRun bool, rv, rm, url, auth, rancherAuth, susePrivateRegistryAuth, cacert, out string, insecure bool,
 ) error {
 	generateParams = struct {
 		dryRun              bool
@@ -46,10 +47,11 @@ func fakeGenerate(
 		registryURL         string
 		registryAuthFile    string
 		rancherAppsAuthFile string
+		susePrivateRegistryAuthFile string
 		registryCACert      string
 		outputDir           string
 		registryInsecure    bool
-	}{dryRun, rv, rm, url, auth, rancherAuth, cacert, out, insecure}
+	}{dryRun, rv, rm, url, auth, rancherAuth, susePrivateRegistryAuth, cacert, out, insecure}
 	return generateErr
 }
 
@@ -139,6 +141,7 @@ func TestGenerate_Success(t *testing.T) {
 		registryURL         string
 		registryAuthFile    string
 		rancherAppsAuthFile string
+		susePrivateRegistryAuthFile string
 		registryCACert      string
 		outputDir           string
 		registryInsecure    bool
@@ -150,6 +153,7 @@ func TestGenerate_Success(t *testing.T) {
 		"--registry-url", "reg",
 		"--registry-authfile", "auth",
 		"--rancher-apps-authfile", "rancher-auth",
+		"--suse-private-registry-authfile", "suse-auth",
 		"--registry-cacert", "cacert",
 		"--output", "out",
 		"--dry-run",
@@ -166,6 +170,7 @@ func TestGenerate_Success(t *testing.T) {
 	assert.Equal(t, "reg", generateParams.registryURL)
 	assert.Equal(t, "auth", generateParams.registryAuthFile)
 	assert.Equal(t, "rancher-auth", generateParams.rancherAppsAuthFile)
+	assert.Equal(t, "suse-auth", generateParams.susePrivateRegistryAuthFile)
 	assert.Equal(t, "cacert", generateParams.registryCACert)
 	assert.Equal(t, "out", generateParams.outputDir)
 	assert.True(t, generateParams.dryRun)
@@ -182,6 +187,7 @@ func TestContainerMode_Success(t *testing.T) {
 		registryURL         string
 		registryAuthFile    string
 		rancherAppsAuthFile string
+		susePrivateRegistryAuthFile string
 		registryCACert      string
 		outputDir           string
 		registryInsecure    bool

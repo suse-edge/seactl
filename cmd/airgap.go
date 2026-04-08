@@ -13,6 +13,7 @@ var (
 	releaseMode         string
 	registryAuthFile    string
 	rancherAppsAuthFile string
+	susePrivateRegistryAuthFile string
 	registryURL         string
 	registryCACert      string
 	registryInsecure    bool
@@ -53,7 +54,7 @@ func NewAirGapCommand() *cobra.Command {
 			// Call airgap generation
 			return airgap.GenerateAirGapEnvironment(
 				dryRun, releaseVersion, releaseMode,
-				registryURL, registryAuthFile, rancherAppsAuthFile, registryCACert,
+				registryURL, registryAuthFile, rancherAppsAuthFile, susePrivateRegistryAuthFile, registryCACert,
 				outputDirTarball, registryInsecure,
 			)
 		},
@@ -66,6 +67,7 @@ func NewAirGapCommand() *cobra.Command {
 	flags.StringVarP(&registryCACert, "registry-cacert", "c", "", "Registry CA Certificate")
 	flags.StringVarP(&registryAuthFile, "registry-authfile", "a", "", "Registry Auth file (base64 user:pass)")
 	flags.StringVar(&rancherAppsAuthFile, "rancher-apps-authfile", "", "Rancher Apps registry auth file (base64 user:pass)")
+	flags.StringVar(&susePrivateRegistryAuthFile, "suse-private-registry-authfile", "", "SUSE Private Registry auth file (base64 user:pass)")
 	flags.BoolVarP(&registryInsecure, "insecure", "k", false, "Skip TLS verification")
 	flags.StringVarP(&outputDirTarball, "output", "o", "", "Output directory for tarball files")
 	flags.BoolVarP(&dryRun, "dry-run", "d", false, "Dry run mode")

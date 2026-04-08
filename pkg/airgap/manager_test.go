@@ -49,7 +49,7 @@ func TestGenerateAirGapEnvironment_DryRun(t *testing.T) {
 		return fakeReleaseManifest()
 	}
 
-	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "url", "auth", "rancher-auth", "ca", "/tmp", true)
+	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "url", "auth", "rancher-auth", "suse-auth", "ca", "/tmp", true)
 	assert.NoError(t, err)
 }
 
@@ -57,7 +57,7 @@ func TestGenerateAirGapEnvironment_ErrorFromManifest(t *testing.T) {
 	ReadAirgapManifestFunc = func(version, mode string) (*config.ReleaseManifest, *config.ImagesManifest, error) {
 		return nil, nil, errors.New("failed manifest")
 	}
-	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "auth", "auth", "rancher-auth", "ca", "/tmp", true)
+	err := GenerateAirGapEnvironment(true, "v1.0.0", "factory", "auth", "auth", "rancher-auth", "suse-auth", "ca", "/tmp", true)
 	assert.Error(t, err)
 }
 
@@ -69,12 +69,24 @@ func TestGenerateRKE2Artifacts_NotDryRun(t *testing.T) {
 
 func TestGenerateHelmArtifacts_NotDryRun(t *testing.T) {
 	manifest, _, _ := fakeReleaseManifest()
-	err := generateHelmArtifacts(false, manifest, &registry.Registry{}, &registry.Registry{})
+	err := generateHelmArtifacts(false, manifest, &registry.Registry{}, &registry.Registry{}, nil)
 	assert.Error(t, err)
 }
 
 func TestGenerateImagesArtifacts_NotDryRun(t *testing.T) {
 	_, imagesManifest, _ := fakeReleaseManifest()
-	err := generateImagesArtifacts(false, imagesManifest, &registry.Registry{}, &registry.Registry{})
+	err := generateImagesArtifacts(false, imagesManifest, &registry.Registry{}, &registry.Registry{}, nil)
 	assert.Error(t, err)
+}
+
+func TestShouldSkipSUSEPrivateRegistryChart(t *testing.T) {
+	assert.True(t, shouldSkipSUSEPrivateRegistryChart("oci://registry.suse.com/private-registry/private-registry-helm", nil))
+	assert.False(t, shouldSkipSUSEPrivateRegistryChart("oci://registry.suse.com/private-registry/private-registry-helm", &registry.Registry{}))
+	assert.False(t, shouldSkipSUSEPrivateRegistryChart("oci://registry.opensuse.org/isv/suse/edge/factory/charts/metallb", nil))
+}
+
+func TestShouldSkipSUSEPrivateRegistryImage(t *testing.T) {
+	assert.True(t, shouldSkipSUSEPrivateRegistryImage("registry.suse.com/private-registry/harbor-core:1.1.1-1.19", nil))
+	assert.False(t, shouldSkipSUSEPrivateRegistryImage("registry.suse.com/private-registry/harbor-core:1.1.1-1.19", &registry.Registry{}))
+	assert.False(t, shouldSkipSUSEPrivateRegistryImage("registry.suse.com/rancher/cluster-api-provider-rke2-bootstrap:v0.21.1", nil))
 }
