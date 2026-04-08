@@ -11,6 +11,7 @@ SUSE Edge Airgap Tool created to make the mirroring process to populate a regist
 - Create a tarball for rke2 release tarball files (required to be used in capi airgap scenarios).
 - Upload the helm-charts oci images defined in the release manifest file to the private registry.
 - Upload the containers images defined in the release images file to the private registry.
+- Optionally authenticate and populate to SUSE Private Registry for charts and images.
 
 ## Requirements
 
@@ -48,6 +49,14 @@ echo -n "$(echo -n 'myusername' | base64 -w 0):$(echo -n 'mypassword' | base64 -
 echo -n "$(echo -n 'myusername@apps.rancher.io' | base64 -w 0):$(echo -n 'mypassword' | base64 -w 0)" > rancher-apps-auth
 ```
 
+4. SUSE Private Registry artifacts are optional. If you want to mirror `oci://registry.suse.com/private-registry/private-registry-helm` or `registry.suse.com/private-registry/harbor*` images, create a SUSE Private Registry auth file using your `SCC mirroring credentials` in the same base64 `user|base64:pass|base64` format and pass it with `--suse-private-registry-authfile`:
+
+```
+echo -n "$(echo -n 'SUSE_REGISTRY_USERNAME' | base64 -w 0):$(echo -n 'SUSE_REGISTRY_PASSWORD' | base64 -w 0)" > suse-private-registry-auth
+```
+
+If you omit this flag, those SUSE Private Registry artifacts are skipped so mirroring can continue when you are not using from SUSE Private Registry.
+
 The following command can be used to mirror the airgap artifacts
 
 ```bash
@@ -61,6 +70,7 @@ Flags:
 -o, --output string              Output directory to store the tarball files
 -a, --registry-authfile string   Registry Auth file with username:password base64 encoded
     --rancher-apps-authfile string     Rancher Apps registry auth file with username:password base64 encoded
+    --suse-private-registry-authfile string     SUSE Private Registry auth file with username:password base64 encoded
 -c, --registry-cacert string     Registry CA Certificate file
 -r, --registry-url string        Registry URL (e.g. '192.168.1.100:5000')
 -d, --dry-run                    Dry run mode, only print the actions without executing them
@@ -77,7 +87,13 @@ In this mode, you provide the `release-version` and `release-mode` flags. The to
 
 Example:
 ```bash
-seactl mirror -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
+seactl mirror \
+  -v 3.4.0 -m factory \
+  -o /tmp/airgap \
+  -a registry-auth.txt \
+  -c /opt/certs/ca.crt \
+  -r myregistry:5000 \
+  --rancher-apps-authfile rancher-auth.txt
 ```
 
 ### Container Mode (Local Files inside Release Container)
@@ -89,35 +105,93 @@ In this mode, you have to **omit** the `release-version` flag. The tool expects 
 Example:
 
 ```bash
-podman run <release-image-id> mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
+podman run <release-image-id> \
+  mirror \
+  -o /tmp/airgap \
+  -a registry-auth.txt \
+  -c /opt/certs/ca.crt \
+  -r myregistry:5000 \
+  --rancher-apps-authfile rancher-auth.txt
 ```
 
-where `<release-image-id>` is something like `registry.suse.com/edge/${VERSION}/release-manifest:${Z_VERSION}"`.
+where `<release-image-id>` is something like `registry.suse.com/edge/${VERSION}/release-manifest:${Z_VERSION}`.
 
 ## Examples
 
 ### Binary Mode Examples
 
+Without SUSE Private Registry (Harbor charts/images will be skipped):
+
 ```bash
-seactl mirror -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -r myregistry:5000 --insecure --debug
+seactl mirror \
+  -v 3.4.0 -m production \
+  -o /tmp/airgap \
+  -a registry-auth.txt \
+  -r myregistry:5000 \
+  --rancher-apps-authfile rancher-auth.txt \
+  --insecure --debug
 ```
 
-```bash 
-./seactl mirror -v 3.4.0 -m production -o ./tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000 
+With CA certificate and SUSE Private Registry:
+
+```bash
+seactl mirror \
+  -v 3.4.0 -m production \
+  -o /tmp/airgap \
+  -a registry-auth.txt \
+  -c /opt/certs/ca.crt \
+  -r myregistry:5000 \
+  --rancher-apps-authfile rancher-auth.txt \
+  --suse-private-registry-authfile suse-private-registry-auth \
+  --debug
 ```
 
 ### Container Mode Example
 
+Without SUSE Private Registry (Harbor charts/images will be skipped):
+
 ```bash
-# This mode assumes /release_manifest.yaml and /release_images.yaml exist locally (e.g. inside the container)
-podman run <release-image-id> mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -r myregistry:5000 --insecure --debug
+# /release_manifest.yaml and /release_images.yaml are expected inside the container
+podman run --rm \
+  -v ./:/opt:z \
+  <release-image-id> \
+  mirror \
+  -o /opt/output \
+  -a /opt/registry-auth.txt \
+  -c /opt/cert.pem \
+  -r myregistry:5000 \
+  --rancher-apps-authfile /opt/rancher-apps-auth \
+  --insecure --debug
+```
+
+With SUSE Private Registry:
+
+```bash
+podman run --rm \
+  -v ./:/opt:z \
+  <release-image-id> \
+  mirror \
+  -o /opt/output \
+  -a /opt/registry-auth.txt \
+  -c /opt/cert.pem \
+  -r myregistry:5000 \
+  --rancher-apps-authfile /opt/rancher-apps-auth \
+  --suse-private-registry-authfile /opt/suse-private-registry-auth \
+  --debug
 ```
 
 ### Proxy Support
 
 ```bash
 export HTTPS_PROXY=http://10.X.X.X:3128
-./seactl mirror -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
+
+seactl mirror \
+  -v 3.4.0 -m factory \
+  -o /tmp/airgap \
+  -a registry-auth.txt \
+  -c /opt/certs/ca.crt \
+  -r myregistry:5000 \
+  --rancher-apps-authfile rancher-auth.txt
 ```
 
 ## Developer

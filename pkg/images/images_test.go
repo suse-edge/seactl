@@ -46,7 +46,7 @@ func TestNew(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 
 	assert.Equal(t, "nginx:latest", img.Name)
 	assert.Equal(t, reg, img.reg)
@@ -81,7 +81,7 @@ func TestDownload_Success(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 
 	remoteImage = func(ref name.Reference, opts ...remote.Option) (v1.Image, error) {
 		return &fakeImage{}, nil
@@ -96,7 +96,7 @@ func TestDownload_InvalidRef(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("!invalid-ref", reg, nil)
+	img := New("!invalid-ref", reg, nil, nil)
 
 	err := img.Download()
 	assert.Error(t, err)
@@ -107,7 +107,7 @@ func TestDownload_FailRemote(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 
 	remoteImage = func(ref name.Reference, opts ...remote.Option) (v1.Image, error) {
 		return nil, errors.New("fake error")
@@ -127,7 +127,7 @@ func TestUpload_Success(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=") // user:password
 	reg := registry.New(authFile, "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 	img.ImageRef = &fakeImage{}
 
 	remoteWrite = func(ref name.Reference, img v1.Image, opts ...remote.Option) error {
@@ -142,7 +142,7 @@ func TestUpload_InvalidRef(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("auth.json", "registry.io", "", false)
-	img := New("!bad-ref", reg, nil)
+	img := New("!bad-ref", reg, nil, nil)
 	img.ImageRef = &fakeImage{}
 
 	err := img.Upload()
@@ -154,7 +154,7 @@ func TestUpload_FailRemoteWrite(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=")
 	reg := registry.New(authFile, "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 	img.ImageRef = &fakeImage{}
 
 	remoteWrite = func(ref name.Reference, img v1.Image, opts ...remote.Option) error {
@@ -174,7 +174,7 @@ func TestGetRemoteOpts_Success(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=") // user:password
 	reg := registry.New(authFile, "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 
 	opts, err := img.getRemoteOpts()
 	assert.NoError(t, err)
@@ -186,7 +186,7 @@ func TestGetRemoteOpts_InvalidCA(t *testing.T) {
 
 	authFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=")
 	reg := registry.New(authFile, "registry.io", "missing-ca.crt", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 
 	opts, err := img.getRemoteOpts()
 	assert.Error(t, err)
@@ -197,7 +197,7 @@ func TestGetRemoteOpts_InvalidAuthFile(t *testing.T) {
 	setupTest(t)
 
 	reg := registry.New("not-found.json", "registry.io", "", false)
-	img := New("nginx:latest", reg, nil)
+	img := New("nginx:latest", reg, nil, nil)
 
 	opts, err := img.getRemoteOpts()
 	assert.Error(t, err)
@@ -205,18 +205,36 @@ func TestGetRemoteOpts_InvalidAuthFile(t *testing.T) {
 }
 
 func TestVerify_Success(t *testing.T) {
-	img := New("test/image:latest", nil, nil)
+	img := New("test/image:latest", nil, nil, nil)
 	err := img.Verify()
 	assert.NoError(t, err)
 }
 
 func TestBuildTargetReference_Digest(t *testing.T) {
 	reg := registry.New("auth", "registry.local", "pass", false)
-	img := New("test/image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", reg, nil)
+	img := New("test/image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", reg, nil, nil)
 	ref, err := name.ParseReference(img.Name)
 	assert.NoError(t, err)
 
 	targetRef, err := img.buildTargetReference(ref)
 	assert.NoError(t, err)
 	assert.Contains(t, targetRef.String(), "registry.local/mirror/test/image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+}
+
+func TestDownload_UsesSUSEPrivateRegistryAuth(t *testing.T) {
+	setupTest(t)
+
+	reg := registry.New("auth.json", "registry.io", "", false)
+	suseAuthFile := writeTempFile(t, "dXNlcg==:cGFzc3dvcmQ=")
+	suseReg := registry.New(suseAuthFile, "registry.suse.com", "", false)
+	img := New("registry.suse.com/private-registry/harbor-core:1.1.1-1.19", reg, nil, suseReg)
+
+	remoteImage = func(ref name.Reference, opts ...remote.Option) (v1.Image, error) {
+		assert.NotEmpty(t, opts)
+		return &fakeImage{}, nil
+	}
+
+	err := img.Download()
+	assert.NoError(t, err)
+	assert.NotNil(t, img.ImageRef)
 }

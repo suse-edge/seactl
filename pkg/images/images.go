@@ -21,6 +21,7 @@ type Images struct {
 	Insecure       bool // If true, skip TLS verification
 	reg            *registry.Registry
 	rancherAppsReg *registry.Registry
+	susePrivateRegistryReg *registry.Registry
 	ImageRef       v1.Image
 }
 
@@ -29,11 +30,12 @@ var (
 	remoteWrite = remote.Write
 )
 
-func New(name string, reg *registry.Registry, rancherAppsReg *registry.Registry) *Images {
+func New(name string, reg *registry.Registry, rancherAppsReg *registry.Registry, susePrivateRegistryReg *registry.Registry) *Images {
 	return &Images{
 		Name:           name,
 		reg:            reg,
 		rancherAppsReg: rancherAppsReg,
+		susePrivateRegistryReg: susePrivateRegistryReg,
 	}
 }
 
@@ -59,6 +61,20 @@ func (i *Images) Download() error {
 			logger.Debugf("Using rancher apps authentication for %s", i.Name)
 		} else {
 			logger.Debugf("Failed to read rancher apps auth file: %v", err)
+		}
+	}
+
+	if strings.HasPrefix(i.Name, "registry.suse.com/private-registry/") && i.susePrivateRegistryReg != nil {
+		authFile, err := i.susePrivateRegistryReg.GetUserFromAuthFile()
+		if err == nil {
+			auth := &authn.Basic{
+				Username: authFile[0],
+				Password: authFile[1],
+			}
+			remoteOpts = append(remoteOpts, remote.WithAuth(auth))
+			logger.Debugf("Using SUSE private registry authentication for %s", i.Name)
+		} else {
+			logger.Debugf("Failed to read SUSE private registry auth file: %v", err)
 		}
 	}
 
