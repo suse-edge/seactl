@@ -88,6 +88,19 @@ func (r *Registry) RegistryHelmLogin() error {
 		args = append(args, "--ca-file", r.RegistryCACert)
 	}
 	cmd := execCommand("helm", args...)
+	if cmd.Env == nil {
+		cmd.Env = append(os.Environ(),
+			"HELM_CONFIG_HOME=/tmp/.helm-config",
+			"HELM_CACHE_HOME=/tmp/.helm-cache",
+			"HELM_DATA_HOME=/tmp/.helm-data",
+		)
+	} else {
+		cmd.Env = append(cmd.Env,
+			"HELM_CONFIG_HOME=/tmp/.helm-config",
+			"HELM_CACHE_HOME=/tmp/.helm-cache",
+			"HELM_DATA_HOME=/tmp/.helm-data",
+		)
+	}
 	err = cmd.Run()
 
 	if err != nil {

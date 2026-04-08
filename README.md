@@ -3,14 +3,14 @@
 [![Go](https://github.com/alknopfler/seactl/actions/workflows/go.yml/badge.svg)](https://github.com/alknopfler/seactl/actions/workflows/go.yml)
 
 
-SUSE Edge Airgap Tool created to make the airgap process easier for SUSE Edge for telco deployments.
+SUSE Edge Airgap Tool created to make the mirroring process to populate a registry easier for SUSE Edge for disconnected deployments.
 
 ## Features
 
-- Read the info from the airgap manifest file.
+- Read the info from the release manifest file (including all versions, helm charts and images).
 - Create a tarball for rke2 release tarball files (required to be used in capi airgap scenarios).
-- Upload the helm-charts oci images defined in the release manifest to the private registry .
-- Upload the containers images defined in the release manifest to the private registry.
+- Upload the helm-charts oci images defined in the release manifest file to the private registry.
+- Upload the containers images defined in the release images file to the private registry.
 
 ## Requirements
 
@@ -34,15 +34,19 @@ make compile
 <username_bas64encoded>:<password_base64encoded>
 ```
 
-for example you can generate both using
+for example you can generate both using the following command and concatenate both
+
 ```
-echo -n "myuser" | base64
-echo -n "mypassword" | base64
+echo -n "$(echo -n 'myusername' | base64 -w 0):$(echo -n 'mypassword' | base64 -w 0)" > encoded-registry-auth
 ```
 
-2. If your private registry is using a self-signed certificate, create a CA certificate file and provide the path to the tool.
+2. If your private registry is using a self-signed certificate, create a CA certificate file and provide also the path to the tool.
 
-3. Rancher Apps charts require authentication. Create a Rancher Apps auth file with the same base64 `user:pass` format described above. See [SUSE Storage installation docs](https://documentation.suse.com/suse-edge/3.5/html/edge/components-suse-storage.html#id-installing-suse-storage).
+3. Rancher Apps charts require authentication. Create a Rancher Apps auth file with the same base64 `user|base64:pass|base64` format described above. See [SUSE Storage installation docs](https://documentation.suse.com/suse-edge/3.5/html/edge/components-suse-storage.html#id-installing-suse-storage):
+
+```
+echo -n "$(echo -n 'myusername@apps.rancher.io' | base64 -w 0):$(echo -n 'mypassword' | base64 -w 0)" > rancher-apps-auth
+```
 
 The following command can be used to mirror the airgap artifacts
 
@@ -58,8 +62,8 @@ Flags:
 -a, --registry-authfile string   Registry Auth file with username:password base64 encoded
     --rancher-apps-authfile string     Rancher Apps registry auth file with username:password base64 encoded
 -c, --registry-cacert string     Registry CA Certificate file
--r, --registry-url string        Registry URL
--d, --dryrun                     Dry run mode, only print the actions without executing them
+-r, --registry-url string        Registry URL (e.g. '192.168.1.100:5000')
+-d, --dry-run                    Dry run mode, only print the actions without executing them
 -m, --release-mode string        Release mode, can be 'factory' or 'production' (default "factory"). Only used if release-version is provided.
 -v, --release-version string     Release version, e.g. 3.4.0 (X.Y.Z). Start Binary Mode if provided.
     --debug                      Debug mode with more logs verbosity
@@ -78,18 +82,17 @@ seactl mirror -v 3.4.0 -m factory -o /tmp/airgap --rancher-apps-authfile rancher
 
 ### Container Mode (Local Files inside Release Container)
 
-In this mode, you **omit** the `release-version` flag. The tool expects to find `/release_manifest.yaml` and `/release_images.yaml` in the local filesystem root (intended for containerized usage where these files are present).
+In this mode, you have to **omit** the `release-version` flag. The tool expects to find `/release_manifest.yaml` and `/release_images.yaml` in the local filesystem root (intended for containerized usage where these files are present).
+
+**To use this mode you will need to consume the release container image provided by SUSE Telco Cloud, which include this tool inside.**
 
 Example:
-```bash
-seactl mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
-```
-
-Check the installed version:
 
 ```bash
-seactl --version
+podman run <release-image-id> mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000
 ```
+
+where `<release-image-id>` is something like `registry.suse.com/edge/${VERSION}/release-manifest:${Z_VERSION}"`.
 
 ## Examples
 
@@ -100,14 +103,14 @@ seactl mirror -v 3.4.0 -m production -o /tmp/airgap --rancher-apps-authfile ranc
 ```
 
 ```bash 
-./seactl mirror -v 3.4.0 -m production -o ./tmp/airgap -r localhost:3000 -d true
+./seactl mirror -v 3.4.0 -m production -o ./tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -c /opt/certs/ca.crt -r myregistry:5000 
 ```
 
 ### Container Mode Example
 
 ```bash
 # This mode assumes /release_manifest.yaml and /release_images.yaml exist locally (e.g. inside the container)
-podman run <image id> mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -r myregistry:5000 --insecure --debug
+podman run <release-image-id> mirror -o /tmp/airgap --rancher-apps-authfile rancher-auth.txt -a registry-auth.txt -r myregistry:5000 --insecure --debug
 ```
 
 ### Proxy Support

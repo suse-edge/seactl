@@ -11,9 +11,23 @@ import (
 	"github.com/alknopfler/seactl/pkg/registry"
 )
 
-const (
-	tempDir = "./"
-)
+var tempDir = os.TempDir()
+
+func helmEnvVars() []string {
+	return []string{
+		"HELM_CONFIG_HOME=/tmp/.helm-config",
+		"HELM_CACHE_HOME=/tmp/.helm-cache",
+		"HELM_DATA_HOME=/tmp/.helm-data",
+	}
+}
+
+func applyHelmEnv(cmd *exec.Cmd) {
+	if cmd.Env == nil {
+		cmd.Env = append(os.Environ(), helmEnvVars()...)
+	} else {
+		cmd.Env = append(cmd.Env, helmEnvVars()...)
+	}
+}
 
 type Helm struct {
 	Name     string // release name (e.g., "rancher")
@@ -59,6 +73,7 @@ func (h *Helm) Download() error {
 	}
 	// Execute the command
 	cmd := execCommand("helm", args...)
+	applyHelmEnv(cmd)
 
 	if logger.Debug {
 		logger.Debugf("Executing command: helm %s\n", strings.Join(args, " "))
@@ -105,6 +120,7 @@ func (h *Helm) Upload() error {
 	}
 
 	cmd := execCommand("helm", args...)
+	applyHelmEnv(cmd)
 	if logger.Debug {
 		logger.Debugf("Executing upload command: helm %s\n", strings.Join(args, " "))
 		cmd.Stdout = os.Stdout
