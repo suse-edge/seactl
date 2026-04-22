@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	RKE2ReleaseURL = "https://github.com/rancher/rke2/releases/download/"
+	RKE2ReleaseURL = "https://prime.ribs.rancher.io/rke2/"
 	RKE2URL        = "https://get.rke2.io"
 )
 
