@@ -61,6 +61,7 @@ type ReleaseManifest struct {
 						ReleaseName string `yaml:"releaseName"`
 						Chart       string `yaml:"chart"`
 						Version     string `yaml:"version"`
+						Repository  string `yaml:"repository"`
 					} `yaml:"addonCharts,omitempty"`
 				} `yaml:"helm"`
 			} `yaml:"workloads"`

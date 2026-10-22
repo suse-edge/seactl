@@ -35,6 +35,7 @@ func fakeReleaseManifest() (*config.ReleaseManifest, *config.ImagesManifest, err
 			ReleaseName string "yaml:\"releaseName\""
 			Chart       string "yaml:\"chart\""
 			Version     string "yaml:\"version\""
+			Repository  string "yaml:\"repository\""
 		} "yaml:\"addonCharts,omitempty\""
 	}{{ReleaseName: "test-chart", Chart: "oci://test/chart", Version: "1.0.0"}}
 
@@ -99,6 +100,7 @@ func TestGenerateHelmArtifacts_DependencyAndAddonCharts_DryRun(t *testing.T) {
 			ReleaseName string "yaml:\"releaseName\""
 			Chart       string "yaml:\"chart\""
 			Version     string "yaml:\"version\""
+			Repository  string "yaml:\"repository\""
 		} "yaml:\"addonCharts,omitempty\""
 	}{
 		{
@@ -117,8 +119,10 @@ func TestGenerateHelmArtifacts_DependencyAndAddonCharts_DryRun(t *testing.T) {
 				ReleaseName string "yaml:\"releaseName\""
 				Chart       string "yaml:\"chart\""
 				Version     string "yaml:\"version\""
+				Repository  string "yaml:\"repository\""
 			}{
 				{ReleaseName: "sriov-addon", Chart: "oci://repo/sriov-addon", Version: "1.0.0"},
+				{ReleaseName: "neuvector-ui-ext", Chart: "neuvector-ui-ext", Version: "2.1.5", Repository: "https://github.com/rancher/ui-plugin-charts/raw/main"},
 			},
 		},
 	}
@@ -129,11 +133,12 @@ func TestGenerateHelmArtifacts_DependencyAndAddonCharts_DryRun(t *testing.T) {
 
 	result, err := generateHelmArtifacts(true, manifest, &registry.Registry{}, &registry.Registry{}, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, result.Succeeded)
+	assert.Equal(t, 4, result.Succeeded)
 	assert.Equal(t, 0, result.Skipped)
 	assert.Contains(t, buf.String(), "oci://repo/sriov-network-operator")
 	assert.Contains(t, buf.String(), "oci://repo/sriov-crd")
 	assert.Contains(t, buf.String(), "oci://repo/sriov-addon")
+	assert.Contains(t, buf.String(), "https://github.com/rancher/ui-plugin-charts/raw/main")
 }
 
 func TestGenerateImagesArtifacts_NotDryRun(t *testing.T) {

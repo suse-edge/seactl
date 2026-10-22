@@ -234,7 +234,7 @@ func generateHelmArtifacts(dryrun bool, releaseManifest *config.ReleaseManifest,
 		}
 
 		for _, addonChart := range value.AddonCharts {
-			skipped, err := processHelmChart(dryrun, addonChart.ReleaseName, addonChart.Chart, addonChart.Version, "", reg, susePrivateRegistryReg)
+			skipped, err := processHelmChart(dryrun, addonChart.ReleaseName, addonChart.Chart, addonChart.Version, addonChart.Repository, reg, susePrivateRegistryReg)
 			if err != nil {
 				return result, err
 			}
